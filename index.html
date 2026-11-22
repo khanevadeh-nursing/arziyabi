@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ارزیابی بخش ها</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0f766e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="ارزیابی بخش ها" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="icon" type="image/png" href="icon-192.png" />
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" />
+  <style>
+    :root {
+      --primary: #0f766e;
+      --primary-dark: #115e59;
+      --primary-light: #ccfbf1;
+      --bg-page: #f1f5f9;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --border-color: #e2e8f0;
+      --base-font-size: 15px;
+    }
+    body.dark-mode {
+      --bg-page: #0f172a;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+    }
+    body {
+      font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      font-size: var(--base-font-size);
+      transition: background-color 0.2s, color 0.2s;
+    }
+    .card-surface {
+      background-color: var(--bg-card);
+      border-color: var(--border-color);
+    }
+    .text-muted {
+      color: var(--text-muted);
+    }
+    .btn-primary {
+      background-color: var(--primary);
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      background-color: var(--primary-dark);
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    button, input, select, textarea { touch-action: manipulation; }
+    @media (max-width: 768px) {
+      input, select, textarea { font-size: 16px !important; }
+    }
+
+    @media print {
+      body { background: #ffffff !important; color: #000000 !important; font-size: 11px !important; }
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      .print-break-inside { break-inside: avoid; }
+    }
+    .print-only { display: none; }
+  </style>
+</head>
+<body class="min-h-screen pb-20">
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="fixed bottom-4 left-4 right-4 md:right-auto md:w-96 z-50 flex flex-col gap-2 pointer-events-none no-print"></div>
+
+  <!-- Confirm Modal -->
+  <div id="confirmModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 no-print">
+    <div class="card-surface border rounded-2xl max-w-md w-full p-5 shadow-xl">
+      <h3 id="confirmTitle" class="text-lg font-bold mb-2">تأیید عملیات</h3>
+      <p id="confirmMessage" class="text-sm text-muted mb-5"></p>
+      <div class="flex justify-end gap-2">
+        <button id="confirmCancelBtn" type="button" class="px-4 py-2 rounded-xl border text-sm font-medium hover:opacity-80">انصراف</button>
+        <button id="confirmOkBtn" type="button" class="px-4 py-2 rounded-xl bg-rose-600 text-white text-sm font-medium hover:bg-rose-700">تأیید</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Login Modal -->
+  <div id="adminModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 no-print">
+    <div class="card-surface border rounded-2xl max-w-sm w-full p-5 shadow-xl">
+      <h3 class="text-base font-bold mb-3">🔐 ورود مدیر</h3>
+      <input id="adminPinInput" type="password" inputmode="numeric" placeholder="رمز عبور مدیر..." class="w-full px-3 py-2.5 rounded-xl border bg-transparent text-sm text-center tracking-widest mb-3 focus:outline-none focus:ring-2" />
+      <div id="adminPinError" class="text-xs text-rose-600 mb-3 hidden text-center font-semibold">رمز عبور نادرست است.</div>
+      <div class="flex justify-end gap-2">
+        <button id="adminCancelBtn" type="button" class="px-4 py-2 rounded-xl border text-sm font-medium hover:opacity-80">انصراف</button>
+        <button id="adminSubmitBtn" type="button" class="btn-primary px-4 py-2 rounded-xl text-sm font-semibold">ورود</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Send to Manager Modal -->
+  <div id="sendModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 no-print">
+    <div class="card-surface border rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold">📤 ارزیابی ذخیره شد — ارسال برای مدیر</h3>
+        <button id="sendModalCloseBtn" type="button" class="text-muted hover:opacity-75 text-lg font-bold px-2">×</button>
+      </div>
+      <p class="text-xs sm:text-sm text-muted leading-relaxed">فایل ارزیابی ذخیره شد. می‌توانید آن را مستقیم به <strong>پیام‌رسان‌ها</strong> ارسال کنید یا خروجی بگیرید:</p>
+      <div class="space-y-2">
+        <button id="nativeShareJsonBtn" type="button" class="btn-primary w-full py-2.5 px-4 rounded-xl text-sm font-semibold">📱 ارسال فایل به پیام‌رسان‌ها</button>
+        <button id="copySummaryBtn" type="button" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition">📋 کپی خلاصه گزارش (برای ارسال در پیام‌رسان)</button>
+        <button id="downloadOnlyJsonBtn" type="button" class="w-full py-2.5 px-4 rounded-xl border text-sm font-semibold hover:opacity-80">💾 دانلود فایل JSON روی دستگاه</button>
+        <button id="downloadCsvFromModalBtn" type="button" class="w-full py-2.5 px-4 rounded-xl border text-sm font-semibold hover:opacity-80">📊 دانلود گزارش اکسل (CSV)</button>
+        <button id="printFromModalBtn" type="button" class="w-full py-2.5 px-4 rounded-xl border text-sm font-semibold hover:opacity-80">🖨️ چاپ / ذخیره PDF رسمی</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Sticky Header -->
+  <header class="sticky top-0 z-30 shadow-sm border-b card-surface no-print">
+    <div class="max-w-6xl mx-auto px-3 sm:px-6 py-3">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <div id="headerLogoWrap" class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 overflow-hidden border" style="background-color: var(--primary-light); border-color: var(--primary);">
+            <img id="headerLogoImg" src="" alt="لوگو" class="w-full h-full object-contain hidden" />
+            <svg id="headerDefaultIcon" class="w-6 h-6" style="color: var(--primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6m-7 4h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <h1 id="hdrHospitalName" class="text-xs sm:text-sm font-semibold text-muted truncate">بیمارستان تخصصی و فوق تخصصی خانواده نزاجا</h1>
+            <p id="hdrFormTitle" class="text-sm sm:text-base font-bold truncate">چک لیست ارزیابی بخش ICU توسط سوپروایزران</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+          <button id="topSaveSendBtn" type="button" class="btn-primary px-3 py-2 rounded-xl text-xs font-bold shadow-sm hover:opacity-90 transition">📤 ذخیره و ارسال</button>
+          <button id="adminToggleBtn" type="button" class="px-3 py-2 rounded-xl border text-xs font-bold hover:opacity-80 transition">🔐 ورود مدیر</button>
+          <div class="text-left bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div class="text-[11px] text-muted leading-tight">امتیاز کل</div>
+            <div class="flex items-baseline gap-1.5">
+              <span id="livePctBadge" class="text-base sm:text-lg font-extrabold" style="color: var(--primary);">0%</span>
+              <span id="liveStatusText" class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">تکمیل نشده</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="mt-2.5 flex items-center gap-2">
+        <div class="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+          <div id="progressBarFill" class="h-full transition-all duration-300 rounded-full" style="width: 0%; background-color: var(--primary);"></div>
+        </div>
+        <span id="progressCountText" class="text-xs font-medium text-muted shrink-0">۰ از ۹۷ مورد</span>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="mt-3 flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+        <button type="button" data-tab="form" class="nav-tab px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition">📝 فرم ارزیابی</button>
+        <button type="button" data-tab="dashboard" class="nav-tab px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition">📊 داشبورد و جدول ۱۲ فصل</button>
+        <button type="button" data-tab="history" class="nav-tab px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition">🗂️ سوابق و خروجی</button>
+        <button type="button" id="navTabTheme" data-tab="theme" class="nav-tab hidden px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition">🎨 تنظیمات و لیست‌ها (مدیر)</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-6xl mx-auto px-3 sm:px-6 pt-4 no-print">
+
+    <!-- TAB 1: EVALUATION FORM -->
+    <section id="tab-form" class="tab-panel space-y-4">
+      <!-- Metadata Card -->
+      <div class="card-surface border rounded-2xl p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm sm:text-base font-bold">مشخصات ارزیابی</h2>
+          <span id="metaDocCodeBadge" class="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-muted font-medium">کد سند: MC-CL-006</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div class="relative searchable-wrap" data-field="formId">
+            <label class="block text-xs font-medium text-muted mb-1">نوع فرم ارزیابی</label>
+            <button type="button" id="btnSelectFormId" class="ss-trigger w-full px-3 py-2 rounded-xl border card-surface text-sm text-right flex items-center justify-between gap-2">
+              <span class="ss-label truncate">انتخاب فرم...</span>
+              <span class="text-xs text-muted">▼</span>
+            </button>
+            <div class="ss-dropdown hidden absolute z-40 mt-1 w-full card-surface border rounded-xl shadow-xl p-2">
+              <input type="text" class="ss-search w-full px-2.5 py-1.5 mb-1.5 rounded-lg border bg-transparent text-xs focus:outline-none" placeholder="جستجوی فرم..." />
+              <div class="ss-options max-h-48 overflow-y-auto space-y-0.5 text-sm"></div>
+            </div>
+          </div>
+
+          <div class="relative searchable-wrap" data-field="ward">
+            <label class="block text-xs font-medium text-muted mb-1">نام بخش</label>
+            <button type="button" id="btnSelectWard" class="ss-trigger w-full px-3 py-2 rounded-xl border card-surface text-sm text-right flex items-center justify-between gap-2">
+              <span class="ss-label truncate">انتخاب بخش...</span>
+              <span class="text-xs text-muted">▼</span>
+            </button>
+            <div class="ss-dropdown hidden absolute z-40 mt-1 w-full card-surface border rounded-xl shadow-xl p-2">
+              <input type="text" class="ss-search w-full px-2.5 py-1.5 mb-1.5 rounded-lg border bg-transparent text-xs focus:outline-none" placeholder="جستجوی بخش..." />
+              <div class="ss-options max-h-48 overflow-y-auto space-y-0.5 text-sm"></div>
+            </div>
+          </div>
+
+          <div class="relative searchable-wrap" data-field="supervisor">
+            <label class="block text-xs font-medium text-muted mb-1">نام سوپروایزر ارزیاب</label>
+            <button type="button" id="btnSelectSupervisor" class="ss-trigger w-full px-3 py-2 rounded-xl border card-surface text-sm text-right flex items-center justify-between gap-2">
+              <span class="ss-label truncate">انتخاب سوپروایزر...</span>
+              <span class="text-xs text-muted">▼</span>
+            </button>
+            <div class="ss-dropdown hidden absolute z-40 mt-1 w-full card-surface border rounded-xl shadow-xl p-2">
+              <input type="text" class="ss-search w-full px-2.5 py-1.5 mb-1.5 rounded-lg border bg-transparent text-xs focus:outline-none" placeholder="جستجوی سوپروایزر..." />
+              <div class="ss-options max-h-48 overflow-y-auto space-y-0.5 text-sm"></div>
+            </div>
+          </div>
+
+          <div class="relative searchable-wrap" data-field="headNurse">
+            <label class="block text-xs font-medium text-muted mb-1">نام سرپرستار بخش</label>
+            <button type="button" id="btnSelectHeadNurse" class="ss-trigger w-full px-3 py-2 rounded-xl border card-surface text-sm text-right flex items-center justify-between gap-2">
+              <span class="ss-label truncate">انتخاب سرپرستار...</span>
+              <span class="text-xs text-muted">▼</span>
+            </button>
+            <div class="ss-dropdown hidden absolute z-40 mt-1 w-full card-surface border rounded-xl shadow-xl p-2">
+              <input type="text" class="ss-search w-full px-2.5 py-1.5 mb-1.5 rounded-lg border bg-transparent text-xs focus:outline-none" placeholder="جستجوی سرپرستار..." />
+              <div class="ss-options max-h-48 overflow-y-auto space-y-0.5 text-sm"></div>
+            </div>
+          </div>
+
+          <div class="relative searchable-wrap" data-field="shift">
+            <label class="block text-xs font-medium text-muted mb-1">شیفت</label>
+            <button type="button" id="btnSelectShift" class="ss-trigger w-full px-3 py-2 rounded-xl border card-surface text-sm text-right flex items-center justify-between gap-2">
+              <span class="ss-label truncate">صبح</span>
+              <span class="text-xs text-muted">▼</span>
+            </button>
+            <div class="ss-dropdown hidden absolute z-40 mt-1 w-full card-surface border rounded-xl shadow-xl p-2">
+              <input type="text" class="ss-search w-full px-2.5 py-1.5 mb-1.5 rounded-lg border bg-transparent text-xs focus:outline-none" placeholder="جستجوی شیفت..." />
+              <div class="ss-options max-h-48 overflow-y-auto space-y-0.5 text-sm"></div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-muted mb-1">تاریخ ارزیابی (دستی)</label>
+            <input id="evalDate" type="text" placeholder="مثلاً 1405/09/01" class="w-full px-3 py-2 rounded-xl border bg-transparent text-sm focus:outline-none focus:ring-2" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter & Search Bar -->
+      <div class="card-surface border rounded-2xl p-3 shadow-sm space-y-3">
+        <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <button type="button" data-filter="all" class="filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold border transition">همه (۹۷)</button>
+            <button type="button" data-filter="unanswered" class="filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold border transition">بی‌پاسخ‌ها</button>
+            <button type="button" data-filter="low" class="filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold border transition">نیازمند اقدام (۰ یا ۱)</button>
+          </div>
+          <div class="relative sm:w-72">
+            <input id="searchInput" type="text" placeholder="جستجو در متن سنجه‌ها..." class="w-full px-3 py-1.5 rounded-xl border bg-transparent text-sm focus:outline-none" />
+          </div>
+        </div>
+
+        <!-- Chapter Selector Pills -->
+        <div id="chapterPills" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 pb-1"></div>
+      </div>
+
+      <!-- Questions Container -->
+      <div id="questionsContainer" class="space-y-4"></div>
+
+      <!-- Corrective Actions -->
+      <div class="card-surface border rounded-2xl p-4 shadow-sm">
+        <label for="correctiveActions" class="block text-sm font-bold mb-2">اقدامات اصلاحی / اقدام پیشگیرانه</label>
+        <textarea id="correctiveActions" rows="3" placeholder="موارد نیازمند اصلاح، پیگیری تجهیزات یا آموزش‌های مورد نیاز بخش را اینجا یادداشت کنید..." class="w-full px-3 py-2 rounded-xl border bg-transparent text-sm focus:outline-none"></textarea>
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap gap-2">
+            <button id="saveHistoryBtn" type="button" class="btn-primary px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition">📤 ذخیره و ارسال به مدیر</button>
+            <button id="goDashboardBtn" type="button" class="px-4 py-2.5 rounded-xl border text-sm font-semibold hover:opacity-80 transition">📊 مشاهده کارنامه و نمودار</button>
+            <button id="printReportBtn" type="button" class="px-4 py-2.5 rounded-xl border text-sm font-semibold hover:opacity-80 transition">🖨️ چاپ / PDF رسمی</button>
+          </div>
+          <button id="resetFormBtn" type="button" class="px-3.5 py-2 rounded-xl text-rose-600 border border-rose-200 hover:bg-rose-50 text-xs sm:text-sm font-semibold transition">پاک‌سازی فرم</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: DASHBOARD & 12-CHAPTER TABLE -->
+    <section id="tab-dashboard" class="tab-panel hidden space-y-4">
+      <!-- KPI Row -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="card-surface border rounded-2xl p-4 shadow-sm text-center flex flex-col items-center justify-center">
+          <div class="text-xs text-muted">درصد عملکرد کل</div>
+          <div id="kpiTotalPct" class="text-2xl font-extrabold mt-1" style="color: var(--primary);">0%</div>
+          <div id="kpiTotalStatus" class="text-xs font-semibold mt-1 text-muted">—</div>
+        </div>
+        <div class="card-surface border rounded-2xl p-4 shadow-sm text-center flex flex-col items-center justify-center">
+          <div class="text-xs text-muted">امتیاز کسب‌شده</div>
+          <div id="kpiScoreSum" class="text-2xl font-extrabold mt-1">0</div>
+          <div id="kpiMaxScore" class="text-xs text-muted mt-1">از حداکثر ۱۹۴</div>
+        </div>
+        <div class="card-surface border rounded-2xl p-4 shadow-sm text-center flex flex-col items-center justify-center">
+          <div class="text-xs text-muted">تعداد غ ق ا (NA)</div>
+          <div id="kpiNaCount" class="text-2xl font-extrabold mt-1">0</div>
+          <div id="kpiTotalQuestionsSub" class="text-xs text-muted mt-1">از ۹۷ سنجه</div>
+        </div>
+        <div class="card-surface border rounded-2xl p-4 shadow-sm text-center flex flex-col items-center justify-center">
+          <div class="text-xs text-muted">موارد نیازمند اصلاح (۰ و ۱)</div>
+          <div id="kpiDeficientCount" class="text-2xl font-extrabold text-rose-600 mt-1">0</div>
+          <div class="text-xs text-muted mt-1">سنجه دارای نقص</div>
+        </div>
+      </div>
+
+      <!-- Chart Card -->
+      <div class="card-surface border rounded-2xl p-4 shadow-sm">
+        <h3 class="text-sm sm:text-base font-bold mb-3">نمودار مقایسه درصد عملکرد ۱۲ فصل ارزیابی</h3>
+        <div class="relative h-80 w-full">
+          <canvas id="chaptersChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Summary Table (Stylish) -->
+      <div class="card-surface border rounded-2xl shadow-sm overflow-hidden">
+        <div class="p-4 border-b flex items-center justify-between flex-wrap gap-2" style="background-color: var(--primary-light);">
+          <div>
+            <h3 class="text-sm sm:text-base font-extrabold text-slate-900">جدول خلاصه نتایج به تفکیک فصل</h3>
+            <p class="text-[11px] text-slate-700">پایش درصد عملکرد و وضعیت اعتباربخشی هر فصل</p>
+          </div>
+          <button id="exportCsvBtn2" type="button" class="px-3.5 py-1.5 rounded-xl bg-white text-slate-800 border border-slate-300 text-xs font-bold shadow-sm hover:bg-slate-50">📥 خروجی اکسل (CSV)</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs sm:text-sm text-right border-collapse">
+            <thead>
+              <tr class="border-b bg-slate-100/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200">
+                <th class="py-3 px-3 font-bold text-center w-12">ردیف</th>
+                <th class="py-3 px-3 font-bold min-w-[200px]">فصل ارزیابی</th>
+                <th class="py-3 px-3 font-bold text-center">تعداد</th>
+                <th class="py-3 px-3 font-bold text-center">غ ق ا</th>
+                <th class="py-3 px-3 font-bold text-center">امتیاز</th>
+                <th class="py-3 px-3 font-bold text-center">حداکثر</th>
+                <th class="py-3 px-3 font-bold text-center min-w-[140px]">درصد عملکرد</th>
+                <th class="py-3 px-3 font-bold text-center">وضعیت</th>
+              </tr>
+            </thead>
+            <tbody id="summaryTableBody" class="divide-y" style="border-color: var(--border-color);"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: HISTORY & EXPORT -->
+    <section id="tab-history" class="tab-panel hidden space-y-4">
+      <div class="card-surface border rounded-2xl p-4 shadow-sm">
+        <h3 class="text-base font-bold mb-2">خروجی فایل و پشتیبان‌گیری</h3>
+        <p class="text-xs sm:text-sm text-muted mb-4">می‌توانید فرم فعلی را به صورت PDF رسمی چاپ کنید، خروجی CSV سازگار با اکسل بگیرید یا فایل پشتیبان JSON ذخیره و بازیابی کنید.</p>
+        <div class="flex flex-wrap gap-2">
+          <button id="printReportBtn2" type="button" class="btn-primary px-4 py-2 rounded-xl text-sm font-semibold">🖨️ چاپ / ذخیره PDF (A4)</button>
+          <button id="exportCsvBtn" type="button" class="px-4 py-2 rounded-xl border text-sm font-semibold hover:opacity-80">📊 دانلود فایل اکسل (CSV)</button>
+          <button id="exportJsonBtn" type="button" class="px-4 py-2 rounded-xl border text-sm font-semibold hover:opacity-80">💾 دانلود پشتیبان (JSON)</button>
+          <label class="px-4 py-2 rounded-xl border text-sm font-semibold hover:opacity-80 cursor-pointer">
+            📂 بازیابی فایل JSON
+            <input id="importJsonInput" type="file" accept=".json" class="hidden" />
+          </label>
+        </div>
+      </div>
+
+      <div class="card-surface border rounded-2xl p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-base font-bold">ارزیابی‌های ذخیره‌شده در این دستگاه</h3>
+          <span id="historyCountBadge" class="text-xs text-muted">۰ مورد</span>
+        </div>
+        <div id="historyList" class="space-y-2.5"></div>
+      </div>
+    </section>
+
+    <!-- TAB 4: APPEARANCE CUSTOMIZER -->
+    <section id="tab-theme" class="tab-panel hidden space-y-4">
+      <div class="card-surface border rounded-2xl p-4 sm:p-6 shadow-sm space-y-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-base font-bold">شخصی‌سازی ظاهر و مشخصات فرم</h3>
+            <p class="text-xs sm:text-sm text-muted mt-0.5">تغییرات شما بلافاصله اعمال و در مرورگر ذخیره می‌شود.</p>
+          </div>
+          <button id="resetThemeBtn" type="button" class="px-3 py-1.5 rounded-xl border text-xs font-semibold text-rose-600 hover:bg-rose-50">بازگشت به پیش‌فرض</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-muted mb-1">نام بیمارستان / مرکز</label>
+            <input id="cfgHospitalName" type="text" class="w-full px-3 py-2 rounded-xl border bg-transparent text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-muted mb-1">عنوان چک‌لیست</label>
+            <input id="cfgFormTitle" type="text" class="w-full px-3 py-2 rounded-xl border bg-transparent text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-muted mb-1">کد سند</label>
+            <input id="cfgDocCode" type="text" class="w-full px-3 py-2 rounded-xl border bg-transparent text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-muted mb-1">اطلاعات ویرایش و ابلاغ</label>
+            <input id="cfgEditionInfo" type="text" class="w-full px-3 py-2 rounded-xl border bg-transparent text-sm" />
+          </div>
+        </div>
+
+        <div class="border-t pt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Color Presets -->
+          <div>
+            <label class="block text-xs font-semibold text-muted mb-2">رنگ اصلی قالب</label>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button type="button" data-color="#0f766e" class="color-swatch w-8 h-8 rounded-full border-2 border-white shadow" style="background:#0f766e" title="سبز بیمارستانی"></button>
+              <button type="button" data-color="#1d4ed8" class="color-swatch w-8 h-8 rounded-full border-2 border-white shadow" style="background:#1d4ed8" title="آبی کلاسیک"></button>
+              <button type="button" data-color="#0369a1" class="color-swatch w-8 h-8 rounded-full border-2 border-white shadow" style="background:#0369a1" title="آبی آسمانی"></button>
+              <button type="button" data-color="#6d28d9" class="color-swatch w-8 h-8 rounded-full border-2 border-white shadow" style="background:#6d28d9" title="بنفش"></button>
+              <button type="button" data-color="#334155" class="color-swatch w-8 h-8 rounded-full border-2 border-white shadow" style="background:#334155" title="سرمه‌ای رسمی"></button>
+              <input id="cfgCustomColor" type="color" class="w-9 h-8 rounded cursor-pointer border-0 bg-transparent" title="انتخاب رنگ دلخواه" />
+            </div>
+          </div>
+
+          <!-- Font Size -->
+          <div>
+            <label class="block text-xs font-semibold text-muted mb-2">اندازه فونت</label>
+            <div class="flex gap-2">
+              <button type="button" data-fontsize="13px" class="font-size-btn px-3 py-1.5 rounded-xl border text-xs font-semibold">کوچک</button>
+              <button type="button" data-fontsize="15px" class="font-size-btn px-3 py-1.5 rounded-xl border text-xs font-semibold">متوسط</button>
+              <button type="button" data-fontsize="17px" class="font-size-btn px-3 py-1.5 rounded-xl border text-xs font-semibold">بزرگ</button>
+            </div>
+          </div>
+
+          <!-- Dark Mode -->
+          <div>
+            <label class="block text-xs font-semibold text-muted mb-2">حالت نمایش</label>
+            <button id="toggleDarkModeBtn" type="button" class="px-4 py-2 rounded-xl border text-sm font-semibold hover:opacity-80">🌙 تغییر حالت روشن / تاریک</button>
+          </div>
+        </div>
+
+        <!-- Logo Upload -->
+        <div class="border-t pt-4">
+          <label class="block text-xs font-semibold text-muted mb-2">لوگوی بیمارستان (نمایش در هدر و برگه چاپ PDF)</label>
+          <div class="flex items-center gap-3 flex-wrap">
+            <label class="px-4 py-2 rounded-xl border text-sm font-semibold cursor-pointer hover:opacity-80">
+              🖼️ انتخاب تصویر لوگو
+              <input id="cfgLogoInput" type="file" accept="image/*" class="hidden" />
+            </label>
+            <button id="removeLogoBtn" type="button" class="px-3 py-2 rounded-xl border text-xs text-rose-600 font-semibold hidden">حذف لوگو</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lists & Dropdowns Manager -->
+      <div class="card-surface border rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
+        <div>
+          <h3 class="text-base font-bold">مدیریت لیست‌های کشویی (بخش‌ها، سوپروایزرها، سرپرستاران، شیفت‌ها)</h3>
+          <p class="text-xs sm:text-sm text-muted mt-0.5">اسامی هر بخش را در خط‌های جداگانه وارد کنید تا بلافاصله در منوهای کشویی و جستجو ظاهر شوند.</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-muted mb-1">لیست بخش‌ها (هر خط یک بخش)</label>
+            <textarea id="cfgListWards" rows="4" class="w-full px-3 py-2 rounded-xl border bg-transparent text-xs sm:text-sm"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-muted mb-1">لیست سوپروایزرها (هر خط یک نام)</label>
+            <textarea id="cfgListSupervisors" rows="4" class="w-full px-3 py-2 rounded-xl border bg-transparent text-xs sm:text-sm"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-muted mb-1">لیست سرپرستاران (هر خط یک نام)</label>
+            <textarea id="cfgListHeadNurses" rows="4" class="w-full px-3 py-2 rounded-xl border bg-transparent text-xs sm:text-sm"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-muted mb-1">لیست شیفت‌ها (هر خط یک شیفت)</label>
+            <textarea id="cfgListShifts" rows="4" class="w-full px-3 py-2 rounded-xl border bg-transparent text-xs sm:text-sm"></textarea>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+          <div class="flex flex-wrap items-center gap-4">
+            <div class="flex items-center gap-2">
+              <label class="text-xs font-semibold text-muted">تغییر رمز مدیر:</label>
+              <input id="cfgAdminPin" type="text" class="w-24 px-2.5 py-1.5 rounded-xl border bg-transparent text-xs text-center" placeholder="3312" />
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-xs font-semibold text-muted">شماره موبایل مدیر (برای پیامک):</label>
+              <input id="cfgManagerPhone" type="tel" dir="ltr" class="w-36 px-2.5 py-1.5 rounded-xl border bg-transparent text-xs text-center" placeholder="0912..." />
+            </div>
+          </div>
+          <button id="saveListsBtn" type="button" class="btn-primary px-4 py-2 rounded-xl text-sm font-semibold">💾 ذخیره تنظیمات مدیر</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- OFFICIAL PRINTABLE REPORT (A4) -->
+  <section id="printSection" class="print-only p-6 text-black">
+    <div class="border-2 border-black p-4">
+      <div class="flex items-center justify-between border-b-2 border-black pb-3 mb-3">
+        <div class="w-16 h-16 flex items-center justify-center">
+          <img id="printLogoImg" src="" alt="لوگو" class="max-w-full max-h-full object-contain hidden" />
+        </div>
+        <div class="text-center flex-1">
+          <div id="printHospitalName" class="text-sm font-bold">بیمارستان تخصصی و فوق تخصصی خانواده نزاجا</div>
+          <div id="printFormTitle" class="text-base font-extrabold mt-1">چک لیست ارزیابی بخش ICU توسط سوپروایزران</div>
+          <div id="printEditionInfo" class="text-[11px] mt-1">تاریخ تهیه: 1403/09 | ویرایش: چهارم | تاریخ ابلاغ: 1404/09 | تاریخ ویرایش بعدی: 1405/09</div>
+        </div>
+        <div class="text-left text-[11px] font-semibold">
+          <div id="printDocCode">کد سند: MC-CL-006</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-5 gap-2 text-xs border-b border-black pb-2 mb-3">
+        <div><strong>بخش:</strong> <span id="pWard"></span></div>
+        <div><strong>سوپروایزر:</strong> <span id="pSupervisor"></span></div>
+        <div><strong>سرپرستار:</strong> <span id="pHeadNurse"></span></div>
+        <div><strong>تاریخ:</strong> <span id="pDate"></span></div>
+        <div><strong>شیفت:</strong> <span id="pShift"></span></div>
+      </div>
+
+      <table class="w-full border-collapse border border-black text-xs mb-3">
+        <thead>
+          <tr class="bg-gray-200">
+            <th class="border border-black p-1.5">ردیف</th>
+            <th class="border border-black p-1.5">فصل ارزیابی</th>
+            <th class="border border-black p-1.5 text-center">تعداد سوال</th>
+            <th class="border border-black p-1.5 text-center">غ ق ا</th>
+            <th class="border border-black p-1.5 text-center">امتیاز</th>
+            <th class="border border-black p-1.5 text-center">حداکثر</th>
+            <th class="border border-black p-1.5 text-center">درصد</th>
+            <th class="border border-black p-1.5 text-center">وضعیت</th>
+          </tr>
+        </thead>
+        <tbody id="printSummaryBody"></tbody>
+      </table>
+
+      <div class="border border-black p-2.5 text-xs mb-4 min-h-[70px]">
+        <strong>اقدامات اصلاحی / اقدام پیشگیرانه:</strong>
+        <p id="pCorrective" class="mt-1 whitespace-pre-wrap"></p>
+      </div>
+
+      <div id="pDeficientListWrap" class="border border-black p-2.5 text-xs mb-4 hidden">
+        <strong>فهرست موارد دارای نقص (امتیاز ۰ یا ۱) و یادداشت‌ها:</strong>
+        <ul id="pDeficientList" class="list-disc pr-4 mt-1 space-y-0.5"></ul>
+      </div>
+
+      <div class="grid grid-cols-3 gap-4 text-xs text-center pt-4">
+        <div>امضا سوپروایزر ارزیاب</div>
+        <div>امضا سرپرستار بخش</div>
+        <div>تأیید مدیر خدمات پرستاری</div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const FORMS_CATALOG = [{"id": "icu_supervisor", "title": "چک لیست ارزیابی بخش ICU توسط سوپروایزران", "docCode": "MC-CL-006", "chapters": [{"title": "ارزیابی عملکرد سرپرستار در حیطه مدیریت خدمات", "items": [{"num": 1, "text": "کادر پرستاری از اتیکت و پوشش مصوب استفاده می کنند."}, {"num": 2, "text": "شرح وظایف به تفکیک رده های پرسنل در بخش موجود است."}, {"num": 3, "text": "استاندارد برنامه نویسی در تنظیم برنامه ماهیانه  بخش رعایت شده است.( رعایت سلسله مراتب  سمت، پست سازمانی، رعایت سابقه کار در ترتیب پرسنلی، رعایت قانون ارتقاء بهره وری، خودداری از منظور نمودن شیفت های  بیش از 12 ساعته ، وجود جمع پرسنلی در هر شیفت، امضاء  و تائید نهایی سرپرستار ،سوپروایزر و مدیر پرستاری، در انتهای برنامه، وجود توالی منطقی کارکرد-offو مرخصی، مشخص بودن مسئول شیفت)"}, {"num": 4, "text": "شیوه مناسب تقسیم کار بر اساس تعداد نیروی موجود و حجم کار شیفت انتخاب شده است"}, {"num": 5, "text": "شواهد پایش فرایند بالینی و غیر بالینی و خدمات ارائه شده  توسط سرپرستار  در فواصل زماتی معین  بر اساس گایدلاین ها، خط مشی ها و روش های اجرایی موجود است ."}, {"num": 6, "text": "شواهد انجام ارزشیابی پرسنل در فواصل زمانی منظم  و بازخورد  نکات مثبت و منفی پرسنلی موجود است."}]}, {"title": "ارزیابی عملکرد پرستاری  درثبت گزارشات مراقبتی", "items": [{"num": 1, "text": "مشخصات کامل بیمار بر روي کلیه اوراق  (دستی یا تایپی )بطور کامل ثبت شده است ."}, {"num": 2, "text": "دستورات پزشک به شیوه صحیح چک  شده و گزارش های مراقبتی در فلوچارت (شیت ICU)بصورت خوانا، متوالی، صرفا با خودکار آبی یا مشکی نوشته شده ، فاقد فضای خالی است و موارد خطا به شیوه صحیح اصلاح شده است."}, {"num": 3, "text": "آزمایشات و ....بر اساس تاریخ انجام در برگه های مربوطه در پرونده نصب شده است."}, {"num": 4, "text": "مستندات نشانگر ثبت منظم  گزارش مراقبت های ارائه شده به بیمار در هر شیفت در فلو چارت ابلاغی جدید  ICU و توجه به تکمیل بخش های مختلف چارت است.(Apache score وsfoa score ، وضعیت انجام مشاوره ها، ارزیابی درد بیمار، ارزیابی سطح هوشیاری، بلاد گاز و دستور SET UP  ، ثبت علائم حیاتی، جذب و دفع بیمار، آزمایشات  بیمار، ارزیابی زخم، تغییر پوزیشن، مراقبت های روتین، ثبت داروهای تجویز شده، اقدامات اصلاحی وگزارش پرستاری شیفت)"}, {"num": 5, "text": "کنترل، محاسبه و اجرا وثبت گزارش دستورات داروهای پر خطر (دیگوکسین  وریدی، انسولین، مخدرها، اولین دوز آنتی بیوتیک های وریدی، تغذیه کامل وریدی، دوز کودکان از ویالهای چند دوزی، خون و فراورده های خونی،کلرور پتاسیم)  صحیح انجام شده است."}, {"num": 6, "text": "به اجرای دستورات مشاوره مشروط به دستور مجددتوسط پزشک معالج توجه شده است ."}, {"num": 7, "text": "دستورات تلفنی با امضای دو پرستار دستور گیرنده و شاهد در برگه دستورات پزشک ثبت و تائید ، مهر و امضاء آن در عرض 24 ساعت توسط پزشک انجام می گیرد.."}, {"num": 8, "text": "در صورت بکارگیری کاردکس الزامات ثبت اطلاعات در کاردکس مراقبتی بیماران رعایت شده است."}]}, {"title": "ارزیابی عملکرد پرستاری  در  ثبت اطلاعات در دفاتر و فرم ها", "items": [{"num": 1, "text": "دفتر پذیرش بخش حاوی کلیه اطلاعات لازم (شماره پرونده، نام بیمار، سن، تشخیص، نام پزشک معالج ،تاریخ و ساعت پذیرش و ترخیص، علت اعزام، سرانجام بیمار- ترخیص،ا نتقال به بخش، اعزام و فوت- شماره تلفن و آدرس ) می باشد."}, {"num": 2, "text": "مستند  کنترل وسایل ، تجهیزات پزشکی، استوک دارویی و ترالی احیاء  طبق تاریخ و شیفت  در دفتر تحویل وسایل وجود دارد."}, {"num": 3, "text": "مستند تقسیم کار پرسنلی در هر شیفت در دفتر مربوطه موجود است."}, {"num": 4, "text": "تحویل و مصرف داروهای مخدر  در دفتر مربوطه با ثبت کلیه اطلاعات لازم ثبت می شود."}, {"num": 5, "text": "فرم جابجایی مشخص در جابجایی و تعویض برنامه  شیفت کاری  با ذکر اطلاعات لازم مورد استفاده قرار می گیرد."}, {"num": 6, "text": "گزارش حوادث رخ داده در طول شیفت  باجزئیات لازم  در فرم مشخص (Accident Report) ثبت می شود ."}]}, {"title": "ارزیابی عملکرد پرستاری در حیطه آموزش کارکنان", "items": [{"num": 1, "text": "دستور العمل و راهنمای استفاده از تجهیزات پزشکی دربخش در دسترس پرسنل وجود دارد و پرسنل از آن آگاهی دارند."}, {"num": 2, "text": "شواهد طی دوره  های تخصصی مراقبت ویژه : احیای قلبی ریوی، تهویه مصنوعی، مدیریت درد بیمار- پیشگیری از عفونت بیمارستانی، پایش همودینامیک برای پرسنل پرستاری موجود است."}, {"num": 3, "text": "پرسنل به گاید لاین و دستور العمل مراقبتی،کتابچه فرمولاری دارویی- خط مشی ها ی بخش و فرایند های کاری –کتابچه ایمنی و سلامت شغلی و بسته ها و دستور العمل های وزارتی مرتبط  دسترسی  و از آن آگاهی دارند."}]}, {"title": "ارزیابی عملکرد پرستاری در حیطه  آموزش به بیمار", "items": [{"num": 1, "text": "وجود شواهد  ثبت آموزشهای ارائه شده به بیماران هوشیار در گزارشات پرستاری و انعکاس آن به همراهان بیمار در صورت لزوم وجود دارد."}]}, {"title": "ارزیابی عملکرد پرستاری درمدیریت  امکانات ،تجهیزات و فضای مراقبتی", "items": [{"num": 1, "text": "امکانات و تجهیزات مناسب درهر واحد مراقبتی  بیمار  جهت دستیابی به اهداف مراقبتی وجود دارد شامل:تخت سه شکن  با پایه سرم و نرده"}, {"num": 2, "text": "مانیتورنگ کامل یا پالس اکسیمتر با پروب مناسب مددجو  به ازای هرتخت"}, {"num": 3, "text": "ونتیلاتور"}, {"num": 4, "text": "آمبوبگ با کیسه ذخیره با رابط دو سر اکسیژن با توجه به سایز مناسب مددجو بخش جهت هر تخت و ترالی کد"}, {"num": 5, "text": "دو عدد سرنگ پمپ و  یک دراپر به ازای هر تخت"}, {"num": 6, "text": "سیستم اکسیژن و ساکشن  مرکزی و پرتابل"}, {"num": 7, "text": "تشک مواج"}, {"num": 8, "text": "دستگاه نبولایزر سرد  اولتراسونیک طبق نیاز و نوع بخش"}, {"num": 9, "text": "ترالی اورژانس در محل مناسب قرار دارد و استاندارد چینش دارو و لوازم درآن رعایت شده است"}, {"num": 10, "text": "چک لیست دارو و تجهیزا ت ضروری ترالی اورژانس منضم به ویرایش 8 آیین نامه استاندارد دارویی بخش اورژانس در یک طرف ترالی  اورژانس نصب وجهت کنترل ترالی در هر شیفت مورد استفاده قرار می گیرد."}, {"num": 11, "text": "لارنگوسکوپ با تیغه های مناسب در ترالی کد"}, {"num": 12, "text": "از قفل نمودن کشوهای ترالی خود داری می شود."}, {"num": 13, "text": "دستگاه الکترو شوک سالم و آماده هرشیفت کنترل می شود."}, {"num": 14, "text": "دستگاه بلاد گاز(در بخش  یا در مرکز )"}, {"num": 15, "text": "کالیبراسیون سالیانه تجهیزات انجام شده است."}, {"num": 16, "text": "دستگاه رادیوگرافی پرتابل و پاراوان سربی"}, {"num": 17, "text": "استوک ست استریل طبق نیاز بخش با تاریخ معتبر"}, {"num": 18, "text": "ونتیلاتور پرتابل جهت نقل و انتقال بیماران اینتوبه موجود است."}, {"num": 19, "text": "یخچال دارو و یخچال نگهداری مواد غذایی بیماران مجزا و مجهز به دماسنج و دمای آن در هرشیفت کنترل و ثبت می شود"}, {"num": 20, "text": "از سیستم تهویه و سرمایش نامناسب دربخش استفاده نمی شود."}, {"num": 21, "text": "چیدمان وسائل و تجهیزات در فضای مراقبتی و انبارها تمیز ومنظم  و مرتبط با نوع فضا می باشد."}, {"num": 22, "text": "فضای استاندارد اتاق نگهداری وسائل کثیف و تمیز وجود دارد."}, {"num": 23, "text": "فضای استاندارد شستشو وسائل وجود دارد."}, {"num": 24, "text": "فضای استاندارد  اتاق دارو وجود دارد."}]}, {"title": "ارزیابی عملکرد پرستاری در تحویل شیفت", "items": [{"num": 26, "text": "تحویل بیماران  بربالین بیمار انجام شده، شواهد آگاهی پرسنل از گزارش کلی بخش و گزارش بیمار خود وجود دارد."}]}, {"title": "ارزیابی عملکرد پرستاری در دارو درمانی", "items": [{"num": 1, "text": "فرایند دارودهی در اتاق تریتمنت نصب است ."}, {"num": 2, "text": "شواهد آگاهی  و عملکرد صحیح پرسنل از اصول دارودهی صحیح و رعایت قانون 8R : توجه به بیمار صحیح، داروی صحیح، راه مصرف صحیح، زمان صحیح ،دوز صحیح، تجویز صحیح، تبت صحیح، توجه به پاسخ بیمار به دارو، وجود دارد."}, {"num": 3, "text": "پرسنل از داروهای مصرفی، نحوه آماده سازی، نگهداری و محاسبه دوز دارویی آگاهی کامل دارند."}, {"num": 4, "text": "داروهای ضروری در قفسه دارویی و یا یخچال دارویی طبق استاندارد نگهداری شده و از نظر تعداد وتاریخ  انقضاء کنترل می شود ."}, {"num": 5, "text": "نکات ضروری در خصوص مراقبت های دارویی انجام شده و عوارض دارویی در گزارش دارویی ثبت می شود."}, {"num": 6, "text": "در صورت بروز عوارض دارویی فرم عوارض ناخواسته دارویی تکمیل می گردد."}, {"num": 7, "text": "ویالهای باز و حل شده به شیوه صحیح نگهداری شده است ."}, {"num": 8, "text": "جدول آنتی دوت ها در بخش موجود است ."}, {"num": 9, "text": "محلولها و داروهای تزریقی در زمان تزریق  در بخش در محل مناسب آماده  می شوند."}, {"num": 10, "text": "برچسب سرم بیمار صحیح ثبت  شده است ."}, {"num": 11, "text": "محل تزریق وریدی و انفوزیون از نظر فلبیت و علائم نشت مایع در هر شیفت کنترل و در صورت بروز  درگزارش منعکس شده است."}]}, {"title": "ارزیابی عملکرد پرستاری در  رعایت حقوق گیرنده خدمت و  موازین ایمنی", "items": [{"num": 1, "text": "بیماران دستبند شناسایی دارند."}, {"num": 2, "text": "نرده کنار تخت در بیماران خواب-سالمند- غیر هوشیار و ضعیف و اطفال بکارگرفته می شود."}, {"num": 3, "text": "جهت کنترل بیماران بیقرار از مهارهای ایمن مثل : مچ بند، آتل  روکش دار طبق دستور پزشک  استفاده می شود."}, {"num": 4, "text": "وسائل حفاظتی بیمار در مقابل اشعه  مانند پیشبند سربی، پاراوان سربی و محافظ  تیروئید وجوددارد."}, {"num": 5, "text": "پرسنل از استاندارد هموویژولانس در تزریق خون و فراورده های خونی آگاهی داشته  و آن را رعایت می نمایند."}, {"num": 6, "text": "از برانکارد های اکسیژن دار و دارای نرده در هنگام انتقال بیمار استفاده می شود."}, {"num": 7, "text": "حفاظ و توری مناسب بر پنجره اتاق ها  نصب است ."}, {"num": 8, "text": "کپسول های اکسیژن  پرتابل مجهز به  چرخ و کمر بند ایمنی می باشد."}, {"num": 9, "text": "در ارائه مراقبت پرستاری طرح انطباق رعایت شده است."}, {"num": 10, "text": "به رعایت حریم  واحد مراقبتی و بکارگیری پوشش مناسب بیمار ان توجه شده است."}]}, {"title": "ارزیابی موازین کنترل عفونت", "items": [{"num": 1, "text": "روشویی در فواصل متناسب با تعداد تختها در سالن مراقبتی موجود است."}, {"num": 2, "text": "کارکنان  در محلهای مناسب به محلولهای های هند راب دسترسی دارند."}, {"num": 3, "text": "در بخش وسایل حفاظت فردی برای کارکنان وجود دارد ."}, {"num": 4, "text": "کوتاه بودن ناخن و عدم استفاده از ناخن مصنوعی و زیور آلات  توسط کارکنان  رعایت می شود."}, {"num": 5, "text": "کارکنان از دانش کافی در خصوص اقدامات اولیه بدنبال مواجه با اجسام نوک تیز برخوردارند."}, {"num": 6, "text": "در جمع آوری و دفع ابزار  تیز و برنده از سیفتی باکس به شیوه صحیح استفاده می گردد."}, {"num": 7, "text": "پرسنل ذیربط (کادر پرستاری و خدمات) با کاربرد و نحوه رقیق سازی مواد ضد عفونی آشنایی دارند."}, {"num": 8, "text": "فرایند شستشو و ضد عفونی ابزار به نحو صحیح اجرا و نظارت  می شود ."}, {"num": 9, "text": "از بکارگیری یک باتل سرم مشترک در حل و رقیق سازی داروهای کلیه بیماران بخش به جای آب مقطر خودداری می شود ."}, {"num": 10, "text": "از گوشی مجزا جهت سمع هر بیمار استفاده می گردد."}, {"num": 11, "text": "از ست ونتیلاتور و چمبر هیومدیفایر یکبار مصرف  و فیلتر آنتی باکتریال در مسیر تنفسی بیمار ان تحت تهویه استفاده می شود."}, {"num": 12, "text": "دستورالعمل زمان استاندارد تعویض اتصالات  و کاتترهای متصل به بیمار رعایت می شود."}, {"num": 13, "text": "از آب مقطر استریل در محفظه فلومتر اکسیژن، دستگاه بخور و چمبر هیومدیفایر در صورت بکارگیری استفاده می شود."}, {"num": 14, "text": "کاتتر ساکشن دهان و تراشه جدا هستند."}, {"num": 15, "text": "سرنگ   گاواژ بیمار در پایان هر روز  دور انداخته می شود ."}, {"num": 16, "text": "شستشو و مراقبت پرینه حد اقل دو بار در شبانه روز انجام می گیرد."}, {"num": 17, "text": "آیا بیماران در ظاهر تمیز به نظر میرسد و در تخت تمیز و آراسته می باشد."}, {"num": 18, "text": "آیا تی سالم  با رنگ مجزا جهت فضا های مختلف موجود و پس از شستشو در محل تی شویی و دارای تهویه مناسب آویزان می شود."}, {"num": 19, "text": "فاضلاب ویا سینک مجزا جهت تخلیه و دفع ترشحات  بیماران وجود دارد."}, {"num": 20, "text": "تفکیک زباله های عفونی و غیر عفونی بدرستی انجام می شود."}]}, {"title": "ارزیابی عملکرد پرستاری در رضایتمندی بیمار و همراه", "items": [{"num": 1, "text": "بیمار و همراه از نحوه برخورد کادر پرستاری  و پاسخ بموقع پرستار رضایت دارند."}, {"num": 2, "text": "همراه بیمار از تامین  تسهیلات لازم برای خود و بیمار رضایت دارند."}]}, {"title": "ارزیابی عملکرد پرستاری در ارائه  مراقبت", "items": [{"num": 1, "text": "عملکرد و مستندات گزارش نشانگر اجرای  مراقبت صحیح در  اکسیژن تراپی و اعمال  تهویه مصنوعی  است."}, {"num": 2, "text": "عملکرد و مستندات گزارش نشانگر اجرای  مراقبت صحیح درتامین نیاز جذب و دفع  مایعات بیمار است."}, {"num": 3, "text": "عملکرد و مستندات گزارش نشانگر اجرای  مراقبت صحیح از مخاط و پوست است."}, {"num": 4, "text": "عملکرد و مستندات گزارش نشانگر اجرای  مراقبت صحیح در رفع نیاز دفعی بیمار است ."}, {"num": 5, "text": "عملکرد و مستندات گزارش نشانگر اجرای  مراقبت صحیح از مسیرهای ماندگار وریدی و شریانی محیطی و مرکزی است."}]}], "defaultWard": "ICU I"}, {"id": "nicu_supervisor", "title": "چک لیست ارزیابی بخش NICU توسط سوپروایزران", "docCode": "MC-CL-007", "chapters": [{"title": "ارزیابی عملکرد سرپرستار در حیطه مدیریت خدمات", "items": [{"num": 1, "text": "کادر پرستاری از اتیکت و پوشش مصوب استفاده می کنند."}, {"num": 2, "text": "شرح وظایف به تفکیک رده های پرسنل موجود است."}, {"num": 3, "text": "استاندارد برنامه نویسی در تنظیم برنامه ماهیانه  بخش رعایت شده است ."}, {"num": 4, "text": "شیوه مناسب تقسیم کار بر اساس تعداد نیروی موجود و حجم کار شیفت انتخاب شده است."}, {"num": 5, "text": "شواهد پایش فرایند بالینی و غیر بالینی و خدمات ارائه شده توسط سرپرستار  در فواصل زماتی معین  بر اساس گایدلاین ها ،خط مشی ها و روش های اجرایی موجود است (چک لیست و برنامه بازدید )"}, {"num": 6, "text": "شواهد انجام ارزشیابی پرسنل در فواصل زمانی منظم و بازخورد  نکات مثبت و منفی پرسنلی موجود است."}, {"num": 7, "text": "محل استقرار هر  پرستار در طول شیفت کاملاً مشرف به بیماراست."}]}, {"title": "ارزیابی عملکرد پرستاری  درثبت گزارشات مراقبتی", "items": [{"num": 1, "text": "مشخصات کامل بیمار روی کلیه اوراق بطور کامل ثبت شده است ."}, {"num": 2, "text": "دستورات پزشک به شیوه صحیح چک  شده و گزارش های مراقبتی در شیت مراقبت ویژه نوزادان ( فلوچارت) بصورت خوانا،متوالی،صرفا با خودکار آبی یا مشکی نوشته شده ، فاقد فضای خالی است و موارد خطا به شیوه صحیح اصلاح شده است."}, {"num": 3, "text": "مستندات نشانگر ثبت منظم  گزارش مراقبت های ارائه شده به نوزاد در هر شیفت در فلو چارت ابلاغی جدید  NICU و توجه به تکمیل بخش های مختلف چارت است."}, {"num": 4, "text": "کنترل ، محاسبه و اجرا وثبت گزارش  دستورات داروهای پر خطر (دیگوکسین  وریدی، انسولین-مخدرها، تغذیه کامل وریدی،دوز کودکان از ویالهای چند دوزی، خون و فراورده های خونی ،کلرور پتاسیم،سولفات منیزیوم ،ویالهای هایپرتونیک  و.....)  صحیح انجام شده است . (صحت اجرای برچسب گذاری و نگهداری،چک مستقل دو گانه ،) قانون 8R"}, {"num": 5, "text": "اجرای دستورات مشاوره مشروط به دستور مجدد توسط پزشک معالج است."}, {"num": 6, "text": "دستورات تلفنی با امضای دو پرستار دستور گیرنده و شاهد در برگه دستورات پزشک ثبت و تائید ، مهر و امضاء آن در عرض 24 ساعت توسط پزشک انجام می گیرد."}, {"num": 7, "text": "در صورت بکارگیری کاردکس الزامات ثبت اطلاعات در کاردکس مراقبتی بیماران رعایت شده است."}]}, {"title": "ارزیابی عملکرد پرستاری  در  ثبت اطلاعات در دفاتر و فرم ها", "items": [{"num": 1, "text": "دفتر پذیرش بخش حاوی کلیه  اطلاعات لازم می باشد."}, {"num": 2, "text": "مستند چک لیست  کنترل وسایل ، تجهیزات پزشکی ،استوک دارویی و ترالی احیاء  طبق تاریخ و شیفت  در دفتر تحویل وسایل وجود دارد."}, {"num": 3, "text": "مستند تقسیم کار پرسنلی به شیوه  موردی در هر شیفت در دفتر مربوطه موجود است."}, {"num": 4, "text": "تحویل و مصرف داروهای مخدر  در دفتر مربوطه با ثبت کلیه اطلاعات لازم ثبت می شود."}, {"num": 5, "text": "فرم جابجایی مشخص در جابجایی و تعویض برنامه  شیفت کاری  با ذکر اطلاعات لازم مورد استفاده قرار می گیرد."}, {"num": 6, "text": "تکمیل مستند فرم ویا ثبت نرم افزاری  گزارشات فوری  وقوع وقایع ناخواسته تهدید کننده حیات در بخش  انجام می گیرد."}, {"num": 7, "text": "فرم سامانه بخش مراقبت تخصصی/ویژه نوزادان در پرونده بستری نوزاد الحاق شده، به روش صحیح تکمیل و در سامانه بارگزاری می شود."}, {"num": 8, "text": "برنامه ماهیانه گروه احیاء نوزاد  طبق استاندارد ابلاغی وزارت متبوع  موجود است."}]}, {"title": "ارزیابی عملکرد پرستاری در حیطه آموزش کارکنان", "items": [{"num": 1, "text": "مستندات گذرانیدن دوره (احیای قلبی ریوی پایه و پیشرفته  نوزاد توسط پرستاران بخش موجود است."}, {"num": 2, "text": "مستندات گذرانیدن دوره شیر مادر ومراقبت آغوشی توسط پرستاران بخش موجود است."}, {"num": 3, "text": "مستندات گذرانیدن دوره مراقبت پیشرفته تنفسی توسط پرستاران بخش موجود است."}, {"num": 4, "text": "مستندات گذرانیدن دوره مراقبت بحرانی توسط پرستاران بخش موجود است."}, {"num": 5, "text": "دستور العمل و راهنمای استفاده از تجهیزات پزشکی در بخش در دسترس پرسنل وجود دارد."}, {"num": 6, "text": "پرسنل به گاید لاین و دستور العمل مراقبتی،کتابچه راهنمای بکارگیری دارو در نوزادان - خط مشی ها ی بخش و فرایند های کاری –کتابچه ایمنی و سلامت شغلی و بسته ها و دستور العمل های وزارتی مرتبط  (درسنامه احیاء نوزاد- بسته خدمتی مراقبت آغوشی –بسته خدمتی نوزاد سالم –کتاب مراقبت بحرانی از نوزاد، مراقبت پیشرفته تنفسی) دسترسی دارند."}]}, {"title": "ارزیابی عملکرد پرستاری در حیطه آموزش به والدین", "items": [{"num": 1, "text": "فرم آموزش به والدین در پرونده بیماران موجود است و یک نسخه با ترخیص به ایشان  تحویل داده می شود."}, {"num": 2, "text": "رسانه آموزشی و وسائل کمک  آموزشی مطابق نیاز والدین  وجود دارد."}]}, {"title": "ارزیابی عملکرد پرستاری درمدیریت  امکانات ،تجهیزات و فضای مراقبتی", "items": [{"num": 1, "text": "با توجه به سطح بخش ،امکانات و تجهیزات مناسب در واحد مراقبتی نوزادجهت دستیابی به اهداف مراقبتی وجود دارد شامل: سیستم مانیتورینگ کامل با ماژول های مربوطه"}, {"num": 2, "text": "دستگاه پالس اکسیمتر با پروب نوزاد به تعداد کافی"}, {"num": 3, "text": "تجهیزات مراقبت حرارتی مناسب با سن  و نیاز مراقبتی  نوزاد(وارمر سرو کنترل با پروب سالم  پوستی  –انکوباتورثابت سالم و گرم)"}, {"num": 4, "text": "سیستم اکسیژن و ساکشن  مرکزی و پرتابل"}, {"num": 5, "text": "تجهیزات اکسیژن رسانی و تامین تهویه ریوی مناسب"}, {"num": 6, "text": "شواهد توجه به  کفایت  لامپ ویا  LED دستگاه های فوتوتراپی وجود دارد."}, {"num": 7, "text": "گوشی معاینه اختصاصی هر تخت"}, {"num": 8, "text": "دو عدد سرنگ پمپ و  یک دراپر"}, {"num": 9, "text": "دستگاه الکترو شوک سالم و آماده با پدال اطفال و بزرگسال"}, {"num": 10, "text": "وجود دستگاه بلاد گاز(در بخش  یا در مرکز )"}, {"num": 11, "text": "ابزار گلوکومتری"}, {"num": 12, "text": "انکوباتور پرتابل(حداقل دارای قدرت شارژ گرمایی و کپسول پر اکسیژن)"}, {"num": 13, "text": "یخچال مجزای نگهداری  دارو وشیر و مواد غذایی(مجهز به دماسنج )"}, {"num": 14, "text": "استوک ست استریل طبق نیاز بخش با تاریخ معتبر"}, {"num": 15, "text": "دستگاه نبولایزر اولتراسونیک بخور سرد"}, {"num": 16, "text": "صندلی مادر مناسب شیردهی در فضای مراقبتی"}, {"num": 17, "text": "شیردوش برقی و ملزومات آن به تعداد کافی با توجه به تعداد مادر ماندگار در بخش"}, {"num": 18, "text": "تمیزی ،منظم بودن چیدمان وسائل و تجهیزات در بخش"}, {"num": 19, "text": "ترالی احیاء کامل طبق دستور العمل وزارت متبوع  در محل مناسب موجود و حاوی دارو ها و تجهیزات احیای نوزاد و درصورت لزوم احیای بزرگسال طبق دستور العمل ابلاغی وزارت متبوع"}, {"num": 20, "text": "تخته احیاءبزرگسال  در اندازه مناسب جهت احیای بزرگسال در صورت لزوم"}, {"num": 21, "text": "کپسول اکسیژن متصل به ترالی  با مانومتر"}, {"num": 22, "text": "وجود ست لارنگوسکوپ نوزاد  با تیغه های مناسب نوزاد(تیغه منحنی و صاف  باسایز صفر، دوصفرو یک ،) و لارنگوسکوپ بزرگسال"}, {"num": 23, "text": "لوله تراشه یکبار مصرف نوزاد در  سایز 2.5-3-3.5-4-4.5 بدون کاف به تعداد مناسب با کانکشن  و لوله تراشه یکبار مصرف در سایزهای بزرگسال"}, {"num": 24, "text": "آمبو بگ و ماسک صورت در سایز های مناسب نوزاد و Airwayوجود"}, {"num": 25, "text": "وسایل کاتتریزاسیون نافی : کاتتر نافی  در سایز مناسب، بیستوی ، نخ بخیه"}, {"num": 26, "text": "وسایل برقراری مسیر وریدی و انفوزیون مایعات  و ترانسفوزیون  خون و فراورده خوني"}, {"num": 27, "text": "سوند نلاتون اپک معده و ساکشن در سایز  6،8و10 به تعداد مناسب"}, {"num": 28, "text": "باتری و لامپ یدک لارنگوسکوپ"}, {"num": 29, "text": "راهنمای استفاده از تجهیزات در کنار هر دستگاه"}, {"num": 30, "text": "فضای استاندارد شستشو وسائل وجود دارد."}, {"num": 31, "text": "فضای استاندارد  اتاق دارو وجود دارد."}, {"num": 32, "text": "فضای استاندارد اتاق نگهداری وسائل کثیف و تمیز وجود دارد."}, {"num": 33, "text": "فضای استاندارداتاق شیر(اتاق شیردوشی و نگهداری شیر )"}, {"num": 34, "text": "امکانات  اقامت پزشک مقیم"}, {"num": 35, "text": "دسترسی مناسب به اتاق عمل یا اتاق زایمان"}, {"num": 36, "text": "فضای استاندارد اقامت مادران"}, {"num": 37, "text": "تمهیدات لازم جهت پیشگیری از آلودگی صوتی در محیط مراقبتی فراهم شده است."}]}, {"title": "ارزیابی عملکرد پرستاری  در تحویل و تحول شیفت", "items": [{"num": 1, "text": "تحویل بیماران  بربالین بیمار انجام شده، شواهد آگاهی پرسنل از گزارش کلی بخش و گزارش بیمار خود وجود دارد."}]}, {"title": "ارزیابی عملکرد پرستاری در دارو درمانی", "items": [{"num": 1, "text": "فرایند دارودهی در اتاق تریتمنت نصب است ."}, {"num": 2, "text": "شواهد آگاهی  و عملکرد صحیح پرسنل از اصول دارودهی صحیح ورعایت قانون 8R : توجه به بیمار صحیح، داروی صحیح، راه مصرف صحیح، زمان صحیح، دوز صحیح، تجویز صحیح، ثبت صحیح، توجه به پاسخ بیمار به  دارو، وجود دارد."}, {"num": 3, "text": "پرسنل از داروهای مصرفی ،نحوه آماده سازی،نگهداری،و محاسبه دوز دارویی آگاهی کامل دارند."}, {"num": 4, "text": "چیدمان داروهای ضروری در قفسه دارویی و یا یخچال دارویی طبق استاندارد،داروهای پرخطر در باکس جداگانه و داروهای مشابه با فاصله (و با برچسب گذاری مناسب )نگهداری شده  و از نظر تعداد وتاریخ  انقضاء کنترل می شود."}, {"num": 5, "text": "نکات ضروری در خصوص مراقبت های دارویی انجام شده و عوارض دارویی در گزارش دارویی ثبت می شود."}, {"num": 6, "text": "در صورت بروز عوارض دارویی فرم عوارض ناخواسته دارویی تکمیل می گردد."}, {"num": 7, "text": "ویالهای باز و حل شده به شیوه صحیح نگهداری شده است ."}, {"num": 8, "text": "جدول آنتی دوت ها در بخش موجود است ."}, {"num": 9, "text": "محلولها و داروهای تزریقی در زمان تزریق  در بخش در محل مناسب آماده  می شوند."}, {"num": 10, "text": "برچسب سرم بیمار صحیح ثبت  شده است ."}, {"num": 11, "text": "محل تزریق وریدی و انفوزیون از نظر فلبیت و علائم نشت مایع در هر شیفت کنترل و در صورت بروز  درگزارش منعکس شده است ."}]}, {"title": "ارزیابی عملکرد پرستاری در  رعایت حقوق گیرنده خدمت و  موازین ایمنی", "items": [{"num": 1, "text": "شواهد آگاهی و عملکرد صحیح کارکنان مراقبتی در زمینه رعایت اصول  ایمنی نوزاد از نظر سقوط ، ضزبه به سر و نیز  هایپوترمی در نقل و انتقالات نوزاد در بدو پذیرش و حین بستری وجود دارد ."}, {"num": 2, "text": "نوزادان دستبند شناسایی دارند."}, {"num": 3, "text": "شواهد توجه به سالم بودن درب انکوباتور و ساید تخت های وارمر جهت پیشگیری از سقوط نوزاد وجود دارد."}, {"num": 4, "text": "تغذیه نوزاد ونیز ارائه مراقبت های  لازم توسط مادر در سالن مراقبتی تحت نظارت مستقیم پرستار و با اعمال مانیتورینگ در صورت لزوم  انجام می گیرد ."}, {"num": 5, "text": "پرسنل آموزش لازم را در خصوص پیشگیری و  مواجهه با حوادث (سقوط ، ،آسپیراسیون وخفگی نوزاد، سرقت وسوختگی با وسائل حرارتی دیده اند."}, {"num": 6, "text": "کپسول های اکسیژن  پرتابل مجهز به  چرخ و کمر بند ایمنی  می باشد و رنگ بدنه کپسول استاندارد است ."}, {"num": 7, "text": "دستور العمل بکارگیری   و نصب ایمن کپسول پر و شارژ شده اطفای حریق در محل های مناسب در بخش  وجود دارد."}, {"num": 8, "text": "وسائل حفاظت از نوزاد و پرسنل در مقابل اشعه مانند پیشبند سربی،پاراوان سربی و محافظ تیروئید موجود است."}, {"num": 9, "text": "نوع وسیله گرمایشی مورد استفاده برای نوزاد با توجه به وضعیت بالینی نوزاد مناسبت دارد."}, {"num": 10, "text": "گرم کننده های تابشی مورد استفاده از پروب سنسور پوستی سالم  و دارای پوشش سالم در سر سنسور  برخوردار است ."}, {"num": 11, "text": "در حین فتوتراپی تونلی و   NID-CAP   نوزاد مانیتور می شود."}, {"num": 12, "text": "حفاظ و توری مناسب بر پنجره اتاق ها  نصب است ."}, {"num": 13, "text": "کلید ها و پریزهای برق سالم و ارت دار  است."}, {"num": 14, "text": "کادر درمان به مادر  معرفی می گردند ."}, {"num": 15, "text": "تمهیدات لازم در خصوص پیشگیری  از سرقت نوزاد در نظر گرفته شده است. (حضور نگهبان-دوربین در محدوده مجاز)"}, {"num": 16, "text": "مادران به محلولهای ضد عفونی کننده،سیفتی باکس و تجهیزات و لوازم  دسترسی ندارند."}, {"num": 17, "text": "کادر پرستاری در بدو ورود درمورد بخش و مقررات آن به والدین آموزش داده اند."}, {"num": 18, "text": "والدین با توجه به سطح مراقبتی مورد نیاز  نوزاد  در مراقبت از نوزاد سهیم می شوند."}]}, {"title": "ارزیابی موازین کنترل عفونت", "items": [{"num": 1, "text": "در پیش ورودی بخش تمهیدات شستشو دست فراهم است."}, {"num": 2, "text": "سینک های  شستشو دست  تمیز وباتعداد و عمق  مناسب نسبت به تعداد تخت فضای مراقبتی (به ازای 4تخت و هر ایزوله و اتاق تریتمنت   یک عدد ) مجهز به شیر آب پدالی یا اتوماتیک  مناسب موجود است."}, {"num": 3, "text": "مایع صابون و دستمال کاغذی جهت شستشو و خشک نمودن دست در کنار هر سینک جهت استفاده پرسنل،مادران و ملاقات کنندگان  موجود است ."}, {"num": 4, "text": "کارکنان  در محلهای مناسب به محلولهای های هند راب مناسب دسترسی دارند.(تریتمنت،در فواصل مناسب در سالن های مراقبتی و در ایزوله )"}, {"num": 5, "text": "از چشمبند استریل یکبار مصرف در مراقبت از چشم در فوتوتراپی استفاده می شود ."}, {"num": 6, "text": "در بخش وسایل حفاظت فردی برای کارکنان وجود دارد .(گان یکبار مصرف و تک پیچ،ماسک،دستکش استریل،لاتکس و نایلونی یکبار مصرف،عینک و شیلد صورت)"}, {"num": 7, "text": "حداقل فاصله بين تختها در اتاقهاي چند تخته 2.4-2 متر است  )"}, {"num": 8, "text": "پرسنل درمانی درزمان تماس با هر نوزاد در خارج از انکوباتور و یا کات جهت انجام پروسیجر از گان  مجزا استفاده می نمایند."}, {"num": 9, "text": "دستکش یکبار مصرف ،لاتکس و استریل با توجه به نوع مراقبت به تعداد کافی در اختیار پرسنل وجود دارد."}, {"num": 10, "text": "در مراقبت از نوزاد از زیر انداز یکبار مصرف استفاده  و در فواصل منظم تعویض میگردد."}, {"num": 11, "text": "داروها و محلول های تزریقی توسط پرستاران  در فضای مجزا و تمیز با رعایت نکات اسپتیک  پس از شستشو و ضدعفونی دستهاآماده می شوند."}, {"num": 12, "text": "شواهد درنظر گرفتن فضای مراقبتی مجزای ایزوله  و پرسنل مجزا جهت مراقبت از نوزادان مشكوك يا با تشخيص قطعي كلونيزاسيون يا عفونت با ارگانيسم مهم وجود دارد."}, {"num": 13, "text": "کارکنان از دانش کافی در خصوص تزریقات ایمن و  اقدامات اولیه بدنبال مواجهه با اجسام نوک تیز برخوردارند."}, {"num": 14, "text": "در جمع آوری و دفع ابزار  تیز و برنده از سیفتی باکس به شیوه صحیح استفاده می گردد.(محل بکارگیری ،حجم  و محل تخلیه :حداکثر تا 4/3 پر  وحداکثر تا 5 روزنگهداری شده)"}, {"num": 15, "text": "پرسنل ذیربط (کادر پرستاری و خدمات) با کاربرد و نحوه رقیق سازی مواد ضد عفونی آشنایی دارند."}, {"num": 16, "text": "فرایند شستشو و ضد عفونی ابزار به نحو صحیح اجرا و نظارت  می شود."}, {"num": 17, "text": "ازبکارگیری یک باتل سرم مشترک در حل و رقیق سازی داروهای کلیه بیماران بخش به جای آب مقطر خودداری می شود ."}, {"num": 18, "text": "اتصالات بیمار طبق دستور العمل معاونت درمان تعویض  می گردد."}, {"num": 19, "text": "از گوشی مجزا جهت سمع هر نوزاد استفاده می گرددو قبل از استفاده با الکل ضدعفونی می شود."}, {"num": 20, "text": "از ست ونتیلاتور یکبار مصرف  در مسیر تنفسی بیماران تحت تهویه استفاده می شود."}, {"num": 21, "text": "مخزن آب نبولایزر های بخش مابین هر دوبیمار و در فواصل منظم با محلول ضدعفونی کننده سطح بالا ضدعفونی می شود."}, {"num": 22, "text": "از آب مقطرسترون  در محفظه فلومتر اکسیژن،دستگاه بخور و چمبر هیومدیفایر در صورت بکارگیری استفاده می شود."}, {"num": 23, "text": "کاتتر ساکشن دهان و تراشه جدا هستند."}, {"num": 24, "text": "سرنگ گاواژ  نوزاد در انتهای هر نوبت تغذیه دور انداخته می شود ."}, {"num": 25, "text": "کارکنان از دانش کافی در خصوص شیوه صحیح اخذ نمونه کشت بیمار(خون، ادرار ،ترشحات و مدفوع) برخوردارند."}, {"num": 26, "text": "فاضلاب ویا سینک مجزا جهت تخلیه و دفع ترشحات  بیماران وجود دارد."}, {"num": 27, "text": "در نظافت کف بخش در سالن مراقبتی بیمار از بکارگیری جاروی خشک خودداری و از تی مرطوب آغشته به محلول گندزدای کف با رنگ مجزا جهت فضا های مختلف استفاده  شده  و پس از شستشو در محل تی شویی دارای تهویه مناسب آویزان می شود ."}]}, {"title": "ارزیابی عملکرد پرستاری در رضایتمندی بیمار و همراه", "items": [{"num": 1, "text": "والدین از نحوه برخورد کادر پرستاری رضایت دارند."}, {"num": 2, "text": "مادران از پاسخ بموقع پرستار رضایت دارند ."}, {"num": 3, "text": "مادران از تامین  تسهیلات لازم برای خود ونوزاد رضایت دارند."}]}, {"title": "ارزیابی عملکرد پرستاری در ارائه  مراقبت", "items": [{"num": 1, "text": "شواهد عملکرد و مستندات گزارشهای مراقبتی نشانگر اجرای  مراقبت حرارتی  صحیح از نوزادان است."}, {"num": 2, "text": "شواهد عملکرد و مستندات گزارشهای مراقبتی نشانگر اجرای مراقبت صحیح از سیستم تنفس و اعمال تهویه مصنوعی  است."}, {"num": 3, "text": "شواهد عملکرد و مستندات گزارشهای مراقبتی نشانگر اجرای  مراقبت صحیح درتامین نیازهای جذب و دفع  مایعات بیمار است."}, {"num": 4, "text": "شواهد عملکرد و مستندات گزارشهای مراقبتی نشانگر اجرای  مراقبت صحیح از مخاط و پوست و پیشگیری از زخم بستر  است."}, {"num": 5, "text": "شواهد عملکرد و مستندات گزارشهای مراقبتی نشانگر اجرای  مراقبت صحیح در رفع نیاز دفعی بیمار است .(توجه به وضعیت دفع  ادراری ودفع روده ای ، مراقبت صحیح از سیستم درناژ ادرار و استومی ها)"}, {"num": 6, "text": "شواهد عملکرد و مستندات گزارشهای مراقبتی نشانگر اجرای  مراقبت صحیح از مسیرهای ماندگار وریدی و شریانی محیطی و مرکزی است."}, {"num": 7, "text": "شواهد عملکرد و مستندات گزارشهای مراقبتی نشانگر توجه پرستار به اجرای صحیح پیشگیری،غربالگری و درمان رتینوپاتی در برنامه مراقبتی نوزادان است(وجود بلندر- رعایت محدوده مجاز o2sat.(94%-92%)، وجود امکانات معاینه چشم در بخش-ثبت تاریخ اولین معاینه چشم  در کاردکس-وجود برنامه فالوآپ معاینات چشم پس از ترخیص،آموزش  والدین"}, {"num": 8, "text": "شواهد عملکرد و مستندات گزارشهای مراقبتی نشانگر توجه به اجرای صحیح برنامه غربالگری بیماریهای CH-PKU می باشد"}]}], "defaultWard": "NICU"}, {"id": "er_supervisor", "title": "چک لیست ارزیابی بخش اورژانس توسط سوپروایزران", "docCode": "MC-CL-009", "chapters": [{"title": "ارزیابی عملکرد سرپرستار در حیطه مدیریت خدمات", "items": [{"num": 1, "text": "کادر پرستاری از اتیکت و پوشش مصوب استفاده می کنند."}, {"num": 2, "text": "شرح وظایف به تفکیک رده های پرسنل موجود است."}, {"num": 3, "text": "استاندارد برنامه نویسی در تنظیم برنامه ماهیانه  بخش رعایت شده است."}, {"num": 4, "text": "شیوه مناسب تقسیم کار بر اساس تعداد نیروی موجود و حجم کار شیفت در واحد های تریاژ، مراقبت سرپایی\n و تحت نظر انتخاب شده است."}, {"num": 5, "text": "سرپرستار از حداقل 5 سال سابقه کار  و طی دوره های تخصصی برخوردار می باشد."}, {"num": 6, "text": "حداکثر 30%پرسنل پرستاری بخش از نیروهای طرحی با حداقل یکسال سابقه کار می باشند."}, {"num": 7, "text": "شواهد انجام ارزشیابی پرسنل در فواصل زمانی منظم   و بازخورد  نکات مثبت و منفی پرسنلی موجود است."}, {"num": 8, "text": "شواهد پایش فرایند بالینی و غیر بالینی و خدمات ارائه شده  توسط سرپرستار  در فواصل زماتی معین  بر اساس گایدلاین ها ، خط مشی ها \nو روش های اجرایی موجود است ."}, {"num": 9, "text": "شواهدکنترل روزانه آمبولانس های موجود از نظر دارو وتجهیزات و نظافت  درمرکز وجود دارد."}, {"num": 10, "text": "شواهد و مستندات استفاده از نتایج سنجش رضایتمندی بیماران  از واحد تریاژ و داده های زمان سنجی فرمهای تریاژ و شاخص های\n اورژانس در مدیریت خدمات پرستاری توسط سرپرستار موجود است."}, {"num": 11, "text": "برنامه ماهیانه گروه کد احیاء، گروه احیاء نوزاد و گروه کد فوریتهای مامایی طبق استاندارد وزارت متبوع ابلاغ و\n درمعرض دید تیم مراقبتی قرار دارد."}, {"num": 12, "text": "تحویل بیماران  بربالین بیمار انجام شده، شواهد آگاهی پرسنل از گزارش کلی بخش و گزارش بیمار خود وجود دارد."}]}, {"title": "ارزیابی عملکرد پرستاری در تریاژ", "items": [{"num": 1, "text": "مسئول واحد تریاژ با تجربه با سابقه بالینی حد اقل 5 سال در بخش های بالینی بویژه اورژانس تعیین شده است ."}, {"num": 2, "text": "جانشین مسئول تریاژ تعیین و در زمان عدم حضور مسئول تریاژ فعالیت دارد."}, {"num": 3, "text": "کارکنان دوره  تریاژ به روش(ESI) را گذرانیده اند."}, {"num": 4, "text": "شرح وظایف پرسنل واحد تریاژ از طرف کارگروه تریاژ بیمارستان ابلاغ و موجود باشد."}, {"num": 5, "text": "اطلاعات تریاژ بیمار در فرم صحیح  ثبت  می گردد."}, {"num": 6, "text": "در فرم تریاژ حداقل اطلاعات ذیل ثبت می گردد:"}, {"num": 7, "text": "تاریخ و ساعت ورود بیمار به واحد تریاژ، نحوه ارجاع بیمار، علت مراجعه و شکایت اصلی بیمار، سطح تریاژ، تاریخ و ساعت تعیین تکلیف بیمار، نام فرد مسئول تریاژ، ثبت علائم حیاتی در بیماران سطح 2و3 الزامی و در سطح 4و5 در صورت نیاز در واحد تریاژ  انجام می شود."}, {"num": 8, "text": "در بیماران با سطوح تریاژ4 و 5 گزارش پرستاری بصورت کامل و صحیح ثبت شده است."}, {"num": 9, "text": "حریم خصوصی بیمار در حین معاینه رعایت می گردد.(استفاده از پرسنل همگن، پارتیشن و شیشه رفلکس)"}, {"num": 10, "text": "مکانی جهت شستشو دست پرستار در قسمت  تریاژ  یا جنب آن تعبیه شده است ."}, {"num": 11, "text": "بیماران از برخورد پرستار واحد تریاژ راضی هستند ."}, {"num": 12, "text": "یک خط تلفن مجزا و دارای حافظه جهت ارتباط ضروری در واحد تریاژ مستقر شده است ."}, {"num": 13, "text": "زنگ اعلام خطر در داخل اتاق تریاژ به منظور فراخوان فوری به کارکنان امنیتی موجود می باشد."}, {"num": 14, "text": "شناسایی به موقع بیمار و سطح تریاژ توسط پرستار به درستی صورت می پذیرد."}]}, {"title": "ارزیابی عملکرد پرستاری  درثبت گزارشات مراقبتی", "items": [{"num": 1, "text": "مشخصات کامل بیمار بر روی جلد پرونده تحت نظر اورژانس  و کلیه اوراق بطور کامل ثبت شده است."}, {"num": 2, "text": "دستورات پزشک به شیوه صحیح چک  شده و گزارش های مراقبتی  بصورت خوانا، متوالی، صرفا با خودکار آبی یا مشکی نوشته شده ، فاقد فضای خالی است\n و موارد خطا به شیوه صحیح اصلاح شده است."}, {"num": 3, "text": "علائم حیاتی طبق دستور پزشک چارت شده است."}, {"num": 4, "text": "آزمایش ها و ....بر اساس تاریخ انجام در برگه های مربوطه پرونده نصب شده است."}, {"num": 5, "text": "کنترل، محاسبه و اجرای  دستورات داروهای پر خطر (دیگوکسین  وریدی،انسولین، مخدرها، تغذیه کامل وریدی، دوز کودکان از ویالهای چند دوزی، خون و فراورده های خونی ،کلرور سدیم و قند هایپرتونیک،کلرور پتاسیم)  توسط دو کارشناس پرستاری انجام و ثبت، تائید و امضا می شود ."}, {"num": 6, "text": "به موارد دارای اهمیت ذیل در گزارش  مراقبتی بیمار اشاره شده است."}, {"num": 7, "text": "علت مراجعه ، نحوه اعزام ، نحوه مراجعه و نوع حادثه، وضعیت بیمار (علائم حیاتی، سطح هوشیاری، علائم عینی و ذهنی بیمار )، وضعیت تغذیه ، دفع و استراحت ، مراقبت ها و درمانهای تهاجمی و غیر تهاجمی  و مشاوره های  انجام شده با ذکر تاریخ و ساعت انجام آن"}, {"num": 8, "text": "اجرای دستورات مشاوره مشروط به دستور مجدد توسط پزشک معالج است."}, {"num": 9, "text": "در بیماران تحت نظر با اقامت بالای 12 ساعت فرم ارزیابی اولیه توسط پرستار تکمیل می شود."}, {"num": 10, "text": "در صورت بکارگیری کاردکس الزامات ثبت اطلاعات در کاردکس مراقبتی بیماران رعایت شده است."}]}, {"title": "ارزیابی عملکرد پرستاری  در  ثبت اطلاعات در دفاتر و فرم ها", "items": [{"num": 1, "text": "دفتر پذیرش بخش حاوی کلیه اطلاعات لازم مانند شماره پرونده، نام بیمار، سن، تشخیص اولیه، تاریخ و ساعت پذیرش ، نحوه مراجعه : بیمارستان مبداء، آمبولانس اعزام کننده، سرانجام بیمار(ترخیص، انتقال به بخش،اعزام و فوت) شماره تلفن و آدرس می باشد."}, {"num": 2, "text": "مستند  کنترل وسایل ، تجهیزات پزشکی، استوک دارویی و ترالی احیاء  طبق تاریخ و شیفت  در دفتر تحویل وسایل وجود دارد."}, {"num": 3, "text": "مستند تقسیم کار پرسنلی در هر شیفت در دفتر مربوطه موجود است."}, {"num": 4, "text": "تحویل و مصرف داروهای مخدر  در دفتر مربوطه با ثبت کلیه اطلاعات لازم ثبت می شود."}, {"num": 5, "text": "فرم جابجایی و تعویض برنامه  شیفت کاری  با ذکر اطلاعات لازم مورد استفاده قرار می گیرد."}, {"num": 6, "text": "گزارش حوادث رخ داده در طول شیفت  با جزئیات لازم  در فرم مشخص (Accident Report) ثبت می شود ."}]}, {"title": "ارزیابی عملکرد پرستاری در حیطه آموزش کارکنان", "items": [{"num": 1, "text": "دستور العمل و راهنمای استفاده از تجهیزات پزشکی در بخش در دسترس پرسنل وجود دارد و پرسنل از آن آگاهی دارند."}, {"num": 2, "text": "پرسنل به گاید لاینها و دستور العملهای مراقبتی،کتابچه فرمولاری دارویی، خط مشی ها ی بخش و فرایند های کاری ،کتابچه ایمنی و \nسلامت شغلی و بسته ها و دستور العمل های وزارتی مرتبط  دسترسی دارند."}, {"num": 3, "text": "وجود مستندات گذرانیدن دوره تریاژ ،کارگاه سالیانه احیای پایه و پیشرفته بزرگسال و کودکان،کارگاه مراقبت های اولیه تروما،کارگاه مهارتهای ارتباطی توسط پرسنل"}]}, {"title": "ارزیابی عملکرد پرستاری در حیطه  آموزش به بیمار", "items": [{"num": 1, "text": "آموزشهای بدو ورود و حین بستری بیمار در گزارش پرستاری در پرونده و آموزش حین ترخیص در فرم آموزش به بیمار با درج نام و مهر و امضای آموزش دهنده و نام و امضای آموزش گیرنده ثبت شده و یک نسخه با ترخیص به بیمار تحویل داده می شود ."}, {"num": 2, "text": "رسانه آموزشی و وسائل کمک  آموزشی مطابق نیاز بیماران وجود دارد."}]}, {"title": "ارزیابی عملکرد پرستاری درمدیریت  امکانات ،تجهیزات و فضای مراقبتی", "items": [{"num": 1, "text": "دو ترالی کد مجزا در صورت وجود فضای مجزای احیاء و تروما وجود دارد(رعایت زمان دسترسی حداکثر یک دقیقه)"}, {"num": 2, "text": "چک لیست دارو و تجهیزا ت ضروری ترالی اورژانس منضم به ویرایش پنجم آیین نامه استاندارد دارویی بخش اورژانس  و نیز استاندارد تجهیزات اورژانس (ابلاغی سال95)در یک طرف ترالی  اورژانس نصب و جهت کنترل ترالی در هر شیفت مورد استفاده قرار می گیرد."}, {"num": 3, "text": "چیدمان و تعداد داروهای حیات بخش در کشوی اول و دوم ترالی از راست به چپ و از جلو به عقب  و بصورت مارپیچی  منطبق با دستور العمل مذکور و در هر شیفت کنترل می شود (طبق ضمیمه پیوست)."}, {"num": 4, "text": "لیست فهرست و تعداد داروهای قفسه دارویی بر قفسه دارویی نصب و داروهای ضروری و ترجیحی و آنتی دوتهای ترجیحی موجود در قفسه  اورژانس در هر شیفت کنترل می شود."}, {"num": 5, "text": "از قفل نمودن کشوهای ترالی خود داری می شود."}, {"num": 6, "text": "تخته احیاء در اندازه مناسب"}, {"num": 7, "text": "کپسول اکسیژن متصل به ترالی  با مانومتر"}, {"num": 8, "text": "وجود ست لارنگوسکوپ با تیغه های مناسب(بزرگسال و اطفال)"}, {"num": 9, "text": "لوله تراشه یکبار مصرف و لارنژیال ماسک به تعداد و سایز مناسب مددجو بخش با کانکشن مناسب"}, {"num": 10, "text": "وجودAirway و ماسک صورت در سایز های مناسب"}, {"num": 11, "text": "آمبوبگ با کیسه ذخیره با رابط دو سر اکسیژن با توجه به سایز مناسب مددجو (نوزادان 250 میلی لیتر ،کودکان 450 میلی لیتر  و بزرگسال)"}, {"num": 12, "text": "دستگاه مانیتور کامل یا پالس اکسیمتر با پروب مناسب مددجو بخش"}, {"num": 13, "text": "امکانات پیس میکر اکسترنال"}, {"num": 14, "text": "وجود الکتروشوک سالم و آماده  با پدال اطفال و بزرگسال"}, {"num": 15, "text": "ونتیلاتور پرتابل و دفیبراتور جهت اعزام بیماران"}, {"num": 16, "text": "ملزومات اکسیژن تراپی اطفال و بزرگسال"}, {"num": 17, "text": "ست معاینه به تعداد کافی"}, {"num": 18, "text": "ملزومات گلوکومتر"}, {"num": 19, "text": "دستگاه الکتروکاردیوگراف"}, {"num": 20, "text": "تجهیزات و لوازم فیکس نمودن بیماران ترومایی( کولار گردنی، Long Back Board ، Short Back Board)"}, {"num": 21, "text": "یخچالهای نگهداری دارو  و غذا مجهز به دماسنج  و رطوبت سنج"}, {"num": 22, "text": "استوک ست استریل(ست پانسمان، تراکئوستومی ، چست تیوپ، سوچور ، ست زایمان  )طبق نیاز بخش با تاریخ معتبر"}, {"num": 23, "text": "پمپ سرنگ و پمپ انفوزیون به تعداد کافی طبق نیاز و نوع بخش"}, {"num": 24, "text": "دستگاه ساکشن پرتابل و یا سیستم ساکشن مرکزی"}, {"num": 25, "text": "دستگاه نبولایزر و بخور گرم و سرد طبق نیاز و نوع بخش"}, {"num": 26, "text": "انکوباتور  گرم و سالم  نوزاد"}, {"num": 27, "text": "دستگاه رادیولوژی پرتابل در اورژانس با ورودی  بالای 20000 مورد در سال"}, {"num": 28, "text": "وجود سیستم فراخوان اضطراری  پرستار در مورد تمام تختهای اورژانس"}, {"num": 29, "text": "وجود سیستم فراخوان اضطراری انتظامات در تمامی فضاهای اورژانس"}, {"num": 30, "text": "صندلی همراه بیمار"}, {"num": 31, "text": "تمیزی ، منظم بودن چیدمان وسائل و تجهیزات در بخش"}, {"num": 32, "text": "وجود راهنمای استفاده از تجهیزات در کنار هر دستگاه"}, {"num": 33, "text": "فضا، شرایط و تجهیزات استاندارد اتاق  عمل سرپایی(سینک اسکراپ، تخت عمل، چراغ سیالیتیک، دستگاه کوتر)"}, {"num": 34, "text": "فضای استاندارد شستشو  و ضد عفونی لوازم و تجهیزات"}, {"num": 35, "text": "فضای استاندارد  اتاق دارو"}, {"num": 36, "text": "فضای استاندارد اتاق نگهداری وسائل کثیف و تمیز"}, {"num": 37, "text": "فضای درمانی و تجهیزات ارائه خدمت به کودک و نوزاد شامل:تخت نرده دار اطفال"}]}, {"title": "ارزیابی عملکرد پرستاری در دارو درمانی", "items": [{"num": 1, "text": "فرایند دارودهی در اتاق تریتمنت نصب است ."}, {"num": 2, "text": "شواهد آگاهی  و عملکرد صحیح پرسنل از اصول دارودهی صحیح ورعایت قانون 8R : توجه به بیمار صحیح ، داروی صحیح، راه مصرف صحیح، زمان صحیح، دوز صحیح ، تجویز صحیح، تبت  صحیح، توجه به پاسخ بیمار به  دارو وجود دارد."}, {"num": 3, "text": "پرسنل از داروهای مصرفی ، نحوه آماده سازی، نگهداری و محاسبه دوز دارویی آگاهی کامل دارند و ویالهای باز و حل شده به شیوه صحیح نگهداری شده است ."}, {"num": 4, "text": "داروهای ضروری در قفسه دارویی و یا یخچال دارویی طبق استاندارد نگهداری شده و از نظر تعداد وتاریخ انقضاء کنترل می شود ."}, {"num": 5, "text": "نکات ضروری در خصوص مراقبت های دارویی انجام شده و عوارض دارویی در گزارش دارویی ثبت می شود."}, {"num": 6, "text": "در صورت بروز عوارض دارویی فرم عوارض ناخواسته دارویی تکمیل می گردد."}, {"num": 7, "text": "محل تزریق وریدی و انفوزیون از نظر فلبیت و علائم نشت مایع در هر شیفت کنترل و در صورت بروز  درگزارش منعکس شده است ."}, {"num": 8, "text": "جدول آنتی دوت ها در بخش موجود است ."}, {"num": 9, "text": "محلولها و داروهای تزریقی در زمان تزریق  در بخش در محل مناسب آماده  می شوند."}, {"num": 10, "text": "برچسب سرم بیمار صحیح ثبت  شده است ."}]}, {"title": "ارزیابی عملکرد پرستاری در  رعایت حقوق گیرنده خدمت و  موازین ایمنی", "items": [{"num": 1, "text": "بیماران  تحت نظر دستبند شناسایی دارند."}, {"num": 2, "text": "نرده کنار تخت در بیماران خواب، سالمند، غیر هوشیار و ضعیف و اطفال بکارگرفته می شود."}, {"num": 3, "text": "جهت کنترل بیماران بیقرار از مهارهای ایمن مثل : مچ بند، آتل  روکش دار طبق دستور پزشک  استفاده می شود."}, {"num": 4, "text": "وسائل حفاظتی بیمار در مقابل اشعه  مانند پیشبند سربی، پاراوان سربی و محافظ  تیروئید وجود دارد."}, {"num": 5, "text": "پرسنل از استاندارد هموویژولانس در تزریق خون و فراورده های خونی آگاهی داشته  و آن را رعایت می نمایند."}, {"num": 6, "text": "از برانکارد های اکسیژن دار و دارای نرده در هنگام انتقال بیمار استفاده می شود."}, {"num": 7, "text": "استاندارد رنگ بدنه ، سایز کپسول های اکسیژن رعایت شده است."}, {"num": 8, "text": "حفاظ و توری مناسب بر پنجره اتاق ها  نصب است ."}, {"num": 9, "text": "کپسول های اکسیژن  پرتابل مجهز به  چرخ و کمر بند ایمنی می باشد."}, {"num": 10, "text": "در ارائه مراقبت پرستاری طرح انطباق رعایت شده است."}, {"num": 11, "text": "به رعایت حریم  واحد مراقبتی و بکارگیری پوشش مناسب بیماران توجه شده است."}, {"num": 12, "text": "بیماران و همراهان به محلولهای ضد عفونی کننده ، سیفتی باکس و تجهیزات و لوازم دسترسی ندارند."}, {"num": 13, "text": "پرسنل از مراتب اخذ رضایت آگاهانه  و برائت در اقدامات تشخیصی و درمانی  و نیز فرآیند ترخیص بیمار با میل شخصی آگاهی دارند."}, {"num": 14, "text": "اطلاع رسانی سامانه 190 و تلفن رسیدگی به شکایات دانشگاه انجام گردیده است."}, {"num": 15, "text": "اطلاع رسانی اجرای  طرح تحول سلامت به مراجعین با نصب اطلاعیه در صندوق ،پذیرش و.....انجام گردیده است."}, {"num": 16, "text": "نصب منشور حقوق بیمار در بخش بصورت قابل رویت"}]}, {"title": "ارزیابی موازین کنترل عفونت", "items": [{"num": 1, "text": "روشویی در فواصل متناسب با تعداد تختها در سالن مراقبتی موجود است."}, {"num": 2, "text": "کارکنان  در محلهای مناسب به محلولهای های هند راب دسترسی دارند."}, {"num": 3, "text": "در بخش وسایل حفاظت فردی برای کارکنان وجود دارد ."}, {"num": 4, "text": "کوتاه بودن ناخن و عدم استفاده از ناخن مصنوعی و زیور آلات  توسط کارکنان  رعایت می شود."}, {"num": 5, "text": "کارکنان از دانش کافی در خصوص اقدامات اولیه بدنبال مواجه با اجسام نوک تیز برخوردارند."}, {"num": 6, "text": "در جمع آوری و دفع ابزار  تیز و برنده از سیفتی باکس به شیوه صحیح استفاده می گردد."}, {"num": 7, "text": "پرسنل ذیربط (کادر پرستاری و خدمات) با کاربرد و نحوه رقیق سازی مواد ضد عفونی آشنایی دارند."}, {"num": 8, "text": "فرایند شستشو و ضد عفونی ابزار به نحو صحیح اجرا و نظارت  می شود"}, {"num": 9, "text": "از بکارگیری یک باتل سرم مشترک در حل و رقیق سازی داروهای کلیه بیماران بخش به جای آب مقطر خودداری می شود"}, {"num": 10, "text": "تکنیک اسپتیک در انجام تزریقات رعایت می شود.(شستن دست، استفاده از پد الکلی یکبار مصرف و یا سواپ استریل، اسپری الکلی استاندارد و عدم نگهداری الکل در ظروف متفرقه، استفاده از سینی تزریق و خودداری از قرار دادن لوازم تزریق در سطوح متفرقه)"}, {"num": 11, "text": "در صورت مراقبت از بیمار اینتوبه، از ست ونتیلاتور و چمبر هیومدایر یکبار مصرف  و فیلتر آنتی باکتریال در مسیر تنفسی بیمار ان استفاده می شود."}, {"num": 12, "text": "بخش اورژانس در خصوص  الزامات انجام تکنیک اسپتیک در انجام پروسیجرهای تشخیصی و درمانی در اوراژانس (پونکسیون  و تزریق درنخاع ،Tap مایع آسیت  و......)دارای خط مشی می باشد، پرسنل از آن آگاهی دارند و به آن عمل می نمایند."}, {"num": 13, "text": "دستورالعمل زمان استاندارد تعویض اتصالات  و کاتترهای متصل به بیمار رعایت می شود."}, {"num": 14, "text": "از آب مقطر استریل در محفظه فلومتر اکسیژن، دستگاه بخور و چمبر هیومدیفایر در صورت بکارگیری استفاده می شود."}, {"num": 15, "text": "تی سالم  با رنگ مجزا جهت فضا های مختلف موجود و پس از شستشو در محل تی شویی و دارای تهویه مناسب آویزان می شود ."}, {"num": 16, "text": "فاضلاب و یا سینک مجزا جهت تخلیه و دفع ترشحات  بیماران وجود دارد."}, {"num": 17, "text": "تفکیک زباله های عفونی و غیر عفونی بدرستی انجام می شود."}]}, {"title": "ارزیابی عملکرد پرستاری در رضایتمندی بیمار و همراه", "items": [{"num": 1, "text": "بیمار و همراه از نحوه برخورد کادر پرستاری  و پاسخ بموقع پرستار رضایت دارند."}, {"num": 2, "text": "همراه بیمار از تامین  تسهیلات لازم برای خود و بیمار رضایت دارند."}]}, {"title": "ارزیابی عملکرد پرستاری در ارائه  مراقبت", "items": [{"num": 1, "text": "مشاهدات  و مستندات گزارش  نشانگر بررسی منظم  و صحیح مددجو/ بیمار از نظر  رفع نیازهای مراقبتی توسط پرستار می باشد."}, {"num": 2, "text": "مشاهدات  و مستندات گزارش  نشانگر پیگیری بموقع پرستار درانجام مشاورهای اورژانس حداکثر ظرف 45 دقیقه می باشد"}, {"num": 3, "text": "مشاهدات  و مستندات گزارش نشانگر اجرای صحیح مراقبت های پرستاری از بیمار براساس دستورات پزشک می باشد."}, {"num": 4, "text": "مشاهدات  و مستندات گزارش  نشانگر پیگیری بموقع پرستار در انجام و رعایت الزامات اعزام  و نقل و انتقال بیمار می باشد."}]}], "defaultWard": "اورژانس"}, {"id": "or_supervisor", "title": "چک لیست ارزیابی بخش اتاق عمل توسط سوپروایزران", "docCode": "MC-CL-008", "chapters": [{"title": "ارزیابی عملکرد سرپرستار در حیطه مدیریت خدمات", "items": [{"num": 1, "text": "کادر پرستاری از اتیکت و پوشش مصوب استفاده می کنند."}, {"num": 2, "text": "شرح وظایف به تفکیک رده های پرسنل در بخش موجود است."}, {"num": 3, "text": "استاندارد برنامه نویسی در تنظیم برنامه ماهیانه  بخش رعایت شده است."}, {"num": 4, "text": "شیوه مناسب تقسیم کار بر اساس تعداد نیروی موجود و حجم کار شیفت انتخاب شده است."}, {"num": 5, "text": "تاکید بر اساس نسبت استاندارد وکفایت تخصصی نیرو در ریکاوری شده است."}, {"num": 6, "text": "وجود اسکجول مناسب و منظم عمل و وجود هماهنگی با مسئول اتاق عمل در صورت تغییر بیماران"}, {"num": 7, "text": "مدیریت مناسب  ارائه خدمات و پایش خدمات موجود است ."}]}, {"title": "کنترل و ثبت اطلاعات در پرونده و فلوچارت بیماران", "items": [{"num": 1, "text": "مشخصات کامل بیمار روی کلیه اوراق(دستی یا تایپی ) بطور کامل ثبت شده است ."}, {"num": 2, "text": "برگه رضایت عمل بیمار وجود دارد."}, {"num": 3, "text": "استاندارد کنترل آمادگی بیمار برای عمل اجرا می شود."}, {"num": 4, "text": "چک لیست جراحی ایمن  به روش صحیح و کامل تکمیل شده است  و پرسنل  در خصوص آن آگاهی دارند."}, {"num": 5, "text": "گزارش عمل جراحی توسط پرستار اسکراب و سیرکولار موجود است ."}, {"num": 6, "text": "گزارش اقدامات قبل ،حین وبعد بیهوشی وثبت داده های مانیتورینگ بیمار توسط پرسنل هوشبری موجود است."}, {"num": 7, "text": "به نکات کلیدی در گزارش ریکاوری بیمارتوجه شده است."}, {"num": 8, "text": "دستورات پزشک جراح و  بیهوشی به شیوه صحیح چک  شده است ."}, {"num": 9, "text": "نگارش گزارش های مراقبتی صحیح است."}, {"num": 10, "text": "به موارد حائز اهمیت در گزارش اشاره شده است."}]}, {"title": "ارزیابی عملکرد پرستاری در حیطه ثبت اطلاعات در دفاتر و  فرم ها", "items": [{"num": 1, "text": "دفتر ادمیت اتاق عمل حاوی کلیه اطلاعات لازم می باشد."}, {"num": 2, "text": "وسایل بخش ،تجهیزات پزشکی و ترالی احیاء  با دفتر تحویل وسایل در هر شیفت کنترل می شود ."}, {"num": 3, "text": "دفتر ثبت نمونه های  ارسالی جهت پاتولوژی ....."}, {"num": 4, "text": "دفتر ارزشیابی پرسنل دارای مشخصات کامل است."}, {"num": 5, "text": "تحویل و مصرف داروهای مخدر در دفتر مربوطه با ثبت کلیه اطلاعات لازم ثبت می شود."}, {"num": 6, "text": "جابجایی و تعویض برنامه شیفت کاری با ذکر اطلاعات لازم در دفتر مربوطه ثبت می گردد."}, {"num": 7, "text": "حوادث حین شیفت در دفتر گزارش حادثه در بخش ثبت می شود."}, {"num": 8, "text": "برنامه ماهیانه گروه احیاء بزرگسال و گروه کد فوریتهای مامایی و گروه کد نوزادان (در مراکز دارای اتاق عمل زنان طبق استاندارد ابلاغی وزارت متبوع وجود دارد.)"}]}, {"title": "ارزیابی فعالیت های آموزشی کارکنان", "items": [{"num": 1, "text": "مستندات انجام نیاز سنجی آموزشی سالیانه و تکمیل  فرم توسعه فردی وجود دارد."}, {"num": 2, "text": "مستندات آموزشی حین خدمت بویژه دوره تخصصی لازم وجود دارد."}, {"num": 3, "text": "برد آموزشی وجود دارد."}, {"num": 4, "text": "پرسنل به گاید لاین و دستور العمل مراقبتی،کتابچه فرمولاری دارویی،خط مشی های بخش و فرایند های کاری ،کتابچه ایمنی و سلامت شغلی و بسته ها و دستور العمل های وزارتی مرتبط دسترسی دارند."}, {"num": 5, "text": "مستندات گذرانیدن دوره سالیانه احیای قلبی ریوی جهت هر پرسنل وجود دارد."}, {"num": 6, "text": "دستورالعمل و راهنمای استفاده از تجهیزات پزشکی در بخش در دسترس پرسنل وجود دارد."}]}, {"title": "ارزبابی امکانات ، تجهیزات و فضا ها", "items": [{"num": 1, "text": "وجود برق اضطراری"}, {"num": 2, "text": "وجود تجهیزات احیاء در اتاق ها و ریکاوری شامل:تخته احیاء در اندازه مناسب"}, {"num": 3, "text": "کپسول اکسیژن متصل به ترالی  با مانومتر"}, {"num": 4, "text": "ست لارنگوسکوپ با تیغه های مناسب"}, {"num": 5, "text": "لوله تراشه یکبار مصرف به تعداد و سایز مناسب مددجو بخش با کانکشن مناسب"}, {"num": 6, "text": "ماسک صورت در سایز های مناسب Airway"}, {"num": 7, "text": "آمبوبگ با کیسه ذخیره با رابط دو سر اکسیژن با توجه به سایز مناسب مددجو(به تعداد تخت عمل و تخت ریکاوری)"}, {"num": 8, "text": "وجود مانیتورینگ کامل به تعداد تخت عمل و ریکاوری  با حداقل  ماژولهای EKG-O2Sat-NIBP"}, {"num": 9, "text": "وجود دستگاه الکترو شوک سالم و آماده  در روی  ترالی احیاء اتاقها و ریکاوری"}, {"num": 10, "text": "وجود دستگاه وارمر جهت مراقبت حرارتی از نوزاد  در اتاق عمل زنان"}, {"num": 11, "text": "وجود انکوباتور گرم  پرتابل جهت انتقال نوزاد در مراکز دارای اتاق عمل زنان"}, {"num": 12, "text": "وجود ست معاینه"}, {"num": 13, "text": "وجود یخچال دارو (مجهز به دماسنج )و یخچال نگهداری غذا"}, {"num": 14, "text": "وجود پمپ سرنگ و پمپ انفوزیون به تعداد کافی طبق نیاز و نوع بخش"}, {"num": 15, "text": "وجود دستگاه ساکشن پرتابل و یا سیستم ساکشن مرکزی"}, {"num": 16, "text": "وجود چراغهاي سقفي مناسب و سالم"}, {"num": 17, "text": "وجود دستگاه الکترو کوتر"}, {"num": 18, "text": "تمیزی ،منظم بودن چیدمان وسائل و تجهیزات در بخش"}, {"num": 19, "text": "وجود راهنمای استفاده از تجهیزات در کنار هر دستگاه"}, {"num": 20, "text": "وجود فضای استاندارد شستشو وسائل"}, {"num": 21, "text": "وجود فضای استاندارد اتاق نگهداری وسائل کثیف و تمیز"}]}, {"title": "ارزیابی عملکرد در تحویل و تحول شیفت", "items": [{"num": 1, "text": "شواهد چک صحیح عملکرد دستگاه هایی مانندساکشن،کوتر،پالس اکسیمتر،دفیبریلاتور وچراغ سیالیتیک ،کپسول و سیستم مرکزی گازهای طبی ،و......هنگام تحویل شیفت وجود دارد."}, {"num": 2, "text": "تحویل پرونده بیماران ونمونه های موجود به شیفت بعد وجود دارد."}, {"num": 3, "text": "وجود شواهد ارائه گزارش مراقبتهای انجام شده و مراقبتهای لازم بعدی از شیفت قبل به شیفت بعد در بیماران تحت عمل ویا بستری در ریکاوری"}]}, {"title": "ارزیابی عملکرد پرستاری در دارو درمانی", "items": [{"num": 1, "text": "خط مشی آماده سازی داروهای هوشیری در بخش وجود دارد و اجرا می شود."}, {"num": 2, "text": "کنترل دوره ای تاریخ انقضاءداروهای بخش(ترالی اورژانس،یخچال ،استوک داروهای ضروری بخش،ترالی داروی هوشبری )انجام می شود."}, {"num": 3, "text": "پرسنل هوشبری  از داروهای مصرفی ، نحوه آماده سازی،نگهداری، و محاسبه دوز دارویی آگاهی کامل دارند."}, {"num": 4, "text": "چک ،اجرا و ثبت اجرای دستورات داروهای پر خطر توسط دو کارشناس هوشبری انجام می شود."}, {"num": 5, "text": "نحوه نگهداری داروها (قفسه دارویی ،یخچال دارویی)طبق استاندارد است."}, {"num": 6, "text": "نکات ضروری در خصوص مراقبت های دارویی انجام شده و عوارض دارویی در گزارش دارویی ثبت می شود."}, {"num": 7, "text": "در صورت بروز عوارض دارویی، فرم عوارض ناخواسته دارویی تکمیل می گردد."}, {"num": 8, "text": "ویالهای باز و حل شده دارای بر چسب ،ساعت و تاریخ است و به زمان انقضای آن توجه شده و به شیوه صحیح نگهداری شده است."}, {"num": 9, "text": "جدول آنتی دوت ها در بخش موجود است ."}, {"num": 10, "text": "از نگهداری داروهای بیهوشی داخل سرنگ خودداری می شود"}]}, {"title": "ارزیابی  رعایت وحقوق گیرنده خدمت و  موازین ایمنی", "items": [{"num": 1, "text": "کادر درمان به بیمار معرفی می گردند ."}, {"num": 2, "text": "بیماران دستبند شناسایی دارند."}, {"num": 3, "text": "وسائل حفاظتی بیمار وپرسنل در مقابل اشعه مانند پیشبند سربی،پاراوان سربی ومحافظ تیروئید وجوددارد."}, {"num": 4, "text": "استاندارد رنگ،کد و کاور  کپسول های اکسیژن و دی اکسید کربن و N2Oرعایت شده است."}, {"num": 5, "text": "محل نگهداری کپسولهای پر و خالی مجزا است ."}, {"num": 6, "text": "در ارائه مراقبت پرستاری طرح انطباق رعایت شده است ."}, {"num": 7, "text": "پرسنل از  آگاهی کافی در خصوص جلوگیری از سوختگی با کوتر  برخوردارند."}, {"num": 8, "text": "فرایند تعریف شده جهت اطمینان از بکارگیری در دارودرمانی (قانون 8R) وجود دارد."}, {"num": 9, "text": "کپسول پر و شارژ شده اطفای حریق با دستورالعمل کاربری  در محل  ایمن در بخش نصب شده است."}, {"num": 10, "text": "شواهد توجه پرسنل به قفل بودن وسایل چرخدار مثل ویلچیر و برانکارد قبل از قرار گرفتن بیمار در آن وجود دارد."}, {"num": 11, "text": "از مهارهای ایمن جهت کنترل بیماران بیقرارمثل: مچبند،آتل روکش دار استفاده می شود."}, {"num": 12, "text": "از برانکارد های اکسیژن دار و دارای نرده در هنگام انتقال بیمار استفاده می شود."}]}, {"title": "ارزیابی موازین کنترل عفونت", "items": [{"num": 1, "text": "استفاده از پادری یا زیرانداز در ورودی اتاق عمل خودداری می شود"}, {"num": 2, "text": "کفش کارکنان قابل شستشو و جلو بسته است."}, {"num": 3, "text": "در صورت  احتمال آلودگی با خون یا مایعات بدن بیمار ،تیم جراحی چکمه غیر قابل نفوذ می پوشند."}, {"num": 4, "text": "اتاق عمل  با علایم محدود کننده تردد، به سه ناحیه غیر کنترل نشده،نیمه کنترل شده و کنترل شده تقسیم شده است ."}, {"num": 5, "text": "کف پوشها و پوشش دیوارها سالم و قابل شستشو است."}, {"num": 6, "text": "پنجره های اتاق عمل دوجداره و همیشه بسته اند."}, {"num": 7, "text": "ناخن پرسنل کوتاه  و از ناخن مصنوعی و زیور آلات  توسط کارکنان استفاده نمی شود ."}, {"num": 8, "text": "ناخن شوی یا اسفنج نرم در کنار سینک اسکراب وجود دارد."}, {"num": 9, "text": "سینک اسکراب پدالی، چشمی یا آرنجی است و عمق مناسب دارد."}, {"num": 10, "text": "مخزن محلولهای هندراب و بتادین اسکراب بعد از اتمام کاملا شستشو و ضدعفونی شده و سپس مجددا پر می شوند."}, {"num": 11, "text": "جراح، متخصص بیهوشی و دستیاران، قبل از عمل دست ها و ساعد خود را بطور صحیح اسکراب جراحی می کنند."}, {"num": 12, "text": "پوشش پرسنل در حین عمل از نظر اصول کنترل غفونت مناسب است ."}, {"num": 13, "text": "در حین عمل کلیه افراد حاضر در اتاق از ماسک جراحی بطور صحیح استفاده می کنند."}, {"num": 14, "text": "در بخش وسایل حفاظت فردی برای کارکنان وجود دارد."}, {"num": 15, "text": "تیم جراحی از محافظ چشم در حین عمل استفاده می کنند."}, {"num": 16, "text": "دما و رطوبت اتاق عمل کنترل می شود(رطوبت 60-20 درصد)"}, {"num": 17, "text": "درب اتاق عمل در حین عمل بسته شده و فقط برای عبور تجهیزات و پرسنل خاص همان اتاق باز می شود."}, {"num": 18, "text": "موی محل عمل در صورت لزوم بلافاصله قبل از عمل و با ماشین ریش تراش الکتریکی شیو می شود."}, {"num": 19, "text": "اتاق عمل از مدیریت خوبی در رابطه با ستهای استریل و اقلام مصرفی یکبار مصرف جهت بیمار برخوردار است ."}, {"num": 20, "text": "اتاق عمل از مدیریت خوبی در رابطه با ست های آلوده برخوردار است."}, {"num": 21, "text": "برنامه و فرایند مکتوب نظافت اتاق عمل(قبل از اولین عمل، بین دو عمل)بعد از اتمام عمل های روزانه ، واشینگ هفتگی وجود دارد."}, {"num": 22, "text": "کارکنان از دانش کافی در خصوص اقدامات اولیه بدنبال مواجهه با اجسام نوک تیز برخوردارند."}, {"num": 23, "text": "از برانکارد های مخصوص اتاق عمل استفاده و از خارج شدن آن از بخش جلوگیری به عمل می آید."}, {"num": 24, "text": "از پر کردن سیفتی باکس بیش از 4/3 اجتناب می شود. (حداکثر 5 روز)"}, {"num": 25, "text": "ساکشن اتاق عمل و هوشیری مجزا می باشد."}, {"num": 26, "text": "سیستم یا شیوه قابل قبول  گرمایش ،سرمایش و تصفیه هوا وجود دارد(سیستم هواساز مرکزی مجهز به فیلتر هپا با قابلیت تعویض هوا حداقل 15 بار در ساعت)"}, {"num": 27, "text": "وسایل بیهوشی (لوله تراشه یکبار مصرف،تیغه لارنگوسکوپ)کنترل و خشک نگهداشته می شود."}, {"num": 28, "text": "انجام کشت موردی با تشخیص کمیته کنترل عفونت از پرسنل در زمان بروز اپیدمی و پیگیری موارد مثبت وجود دارد."}, {"num": 29, "text": "پرسنل ذیربط با کاربرد و نحوه رقیق سازی مواد ضد عفونی آشنایی دارند."}, {"num": 30, "text": "محل تی شویی نورگیر و دارای تهویه مناسب است ."}, {"num": 31, "text": "تی سالم  با رنگ مجزا جهت فضا های مختلف موجود و پس از شستشو آویزان می شود  ."}, {"num": 32, "text": "فاضلاب ویا سینک مجزا جهت تخلیه و دفع ترشحات ساکشن ها وجود دارد."}, {"num": 33, "text": "دستگاه فلش جهت ضد عفونی ابزار در صورت محدودیت تعداد ابزار وجود دارد."}, {"num": 34, "text": "از مبل و صندلی های غیر پارجه ای و قابل شستشو استفاده می شود ."}, {"num": 35, "text": "آیفون در اتاق ها جهت کاهش تردد وجود دارد."}, {"num": 36, "text": "پرسنل در خصوص فرایند  مدیریت بیماران عفونی  آگاهی دارند."}, {"num": 37, "text": "عدم وجود وسائل اضافی در اتاق عمل"}]}, {"title": "ارزیابی رضایتمندی بیمار", "items": [{"num": 1, "text": "بیمار از نحوه برخورد کادر پرستاری رضایت دارند."}, {"num": 2, "text": "بیمار از پاسخ بموقع پرستار رضایت دارند ."}, {"num": 3, "text": "بیمار از تامین تسهیلات لازم برای خود رضایت دارند."}]}], "defaultWard": "اتاق عمل"}, {"id": "delivery_supervisor", "title": "چک لیست ارزیابی بخش بلوك زايمان توسط سوپروایزران", "docCode": "MC-CL-013", "chapters": [{"title": "ارزیابی عملکرد سرپرستار در حیطه مدیریت خدمات", "items": [{"num": 1, "text": "کادر پرستاری از اتیکت و پوشش مصوب استفاده می کنند."}, {"num": 2, "text": "شرح وظایف به تفکیک رده های پرسنل در بخش موجود است."}, {"num": 3, "text": "استاندارد برنامه نویسی در تنظیم برنامه ماهیانه  بخش رعایت شده است."}, {"num": 4, "text": "شیوه مناسب تقسیم کار بر اساس تعداد نیروی موجود و حجم کار شیفت انتخاب شده است."}, {"num": 5, "text": "شواهد پایش فرایند بالینی و غیر بالینی و خدمات ارائه شده  توسط سرپرستار  در فواصل زماتی معین  بر اساس گایدلاین ها، خط  مشی ها و روش های اجرایی موجود است ."}, {"num": 6, "text": "شواهد انجام ارزشیابی پرسنل در فواصل زمانی منظم   و بازخورد  نکات مثبت و منفی پرسنلی موجود است."}]}, {"title": "ارزیابی عملکرد پرستاری  درثبت اطلاعات در پرونده  وگزارش های مراقبتی", "items": [{"num": 1, "text": "مشخصات بيمار مطابق با پروتکل شناسائی ایمن بر روی كليه اوراق بطور كامل ثبت گردیده است."}, {"num": 2, "text": "آزمايشات و خدمات پاراکلینیک و.... بر اساس تاريخ و ساعت انجام در برگه هاي مربوطه پرونده  بصورت ایمن نصب شده است ."}, {"num": 3, "text": "دستورات پزشك با ثبت تعداد موارد چک شده از تعداد کل دستورات و درج ساعت و تاريخ توسط چك كننده امضاء شده وسپس با يك خط مستقيم به گونه اي بسته شده است كه جايي براي اضافه كردن دستورات نمي باشد( دستورات  ERRORشده با ذکر شماره ثبت شده باشد .دستورات  داروهای پرخطر توسط دو پرسنل امضا شده باشد )"}, {"num": 4, "text": "فرم های پارتوگراف ،کنترل لیبر،کنترل زائو در پست پارتوم،فرم علت سزارين و... بطور کامل و دقیق طبق پروتکل تکمیل شده است ."}, {"num": 5, "text": "مشخصات نوزاد بصورت دقیق در فرم مربوطه ثبت گردیده است ."}, {"num": 6, "text": "علايم حياتي و سایر اطلاعات خواسته شده در برگ چارت و در محل  خود بطوردقيق و  مطابق با پروتکل با رعایت زمان استاندارد چارت شده است .(فواصل کنترل  مطابق با دستور پزشک و کاردکس بیمار است)"}, {"num": 7, "text": "وزن بیمار کنترل شده و مطابق با پروتکل در محل تعیین شده( در پرونده ) ثبت می گردد ."}, {"num": 8, "text": "اولین ارزیابی با توجه به شرایط بیمار،در محدوده زمانی ابلاغ شده انجام شده است.( فرم ارزیابی بصورت دقیق و کامل تکمیل شده است.)"}, {"num": 9, "text": "در صورت بکارگیری کاردکس، الزامات ثبت اطلاعات در کاردکس مراقبتی بیماران رعایت شده است."}, {"num": 10, "text": "به اجرای دستورات مشاوره مشروط به دستور مجددتوسط پزشک معالج توجه شده است ."}, {"num": 11, "text": "رضايت نامه هاي سزارين توسط خود بيمار و همسر ايشان تكميل شده است."}]}, {"title": "ارزیابی عملکرد پرستاری  در  ثبت اطلاعات در دفاتر و فرم ها", "items": [{"num": 1, "text": "گزارشات شرح زایمان ، پارتوگراف ، لیبر ریکورد و......بدون خط خوردگي و لاك گرفتگي و فضاي خالي است."}, {"num": 2, "text": "درصورت خط خوردگی در بالای آن ،کلمه اصلاح شد نوشته شود و درپایان گزارش تعداد موارد خط خوردگی با حروف ذکرشده ،مهر ،امضا و سمت فرد مشخص شده باشد."}, {"num": 3, "text": "گزارش پرستاری براساس سیستم های بدن نوشته شده است."}, {"num": 4, "text": "نوع و ساعت کلیه اقدامات درمانی ، مراقبتی ، تشخیصی بر اساس ترتيب زمان انجام ثبت شده است."}, {"num": 5, "text": "گزارشات پرستاري بطور خوانا ومتوالي فقط با خودکار آبی و مشکی نوشته شده و فضاي خالي بين آنها نبوده وپايان گزارش با يك خط مستقيم به گونه اي بسته شده كه جايي براي اضافه كردن نباشد."}, {"num": 6, "text": "از واژه هاي مبهم مثل خوب، نرمال ، متوسط و...در گزارش استفاده نشده است."}, {"num": 7, "text": "به ساعت انجام اقدامات خاص ( مثل آزمايشات ، راديو گرافي ، ويزيت پزشك و..) اشاره شده است."}, {"num": 8, "text": "در گزارش پرستاري  بدو ورود ، نحوه مراجعه،علت بستری و...اشاره شده است."}, {"num": 9, "text": "در مورد وضعيت بيمار (علايم حياتي ، سطح هوشياري ، علايم عيني و ذهني) توضيحات كافي داده شده است."}, {"num": 10, "text": "وضعیت دفع بیمار ثبت گردیده است . ( در صورت مداخله و تجویز دارو مطابق با دستور پزشک ثبت و اجرا گردیده است )"}, {"num": 11, "text": "هر گونه تغییر (ناگهانی ) در وضعیت بیمار با ذکر روش گزارش دهی ،ساعت گزارش به پزشک ،ساعت حضور پزشک بر بالین بیمار، ساعت انجام اقدامات درمانی انجام شده و......،بطور کامل ثبت شده است ."}, {"num": 12, "text": "در مـورد وضـعيــت درمـان هاي تــهاجمــي مثــل ( تجويز اكسيژن ، سوند فولي،  پاره کردن کیسه امنیوتیک،و...) توضيحات لازم ذكر شده است."}, {"num": 13, "text": "پیگیری ها مربوط به دریافت نتایج آزمایشات ، مشاوره ها و ... ثبت شده است."}, {"num": 14, "text": "اقداماتی را که باید در شیفت های بعدی انجام و پیگیری شوند ،گزارش و ثبت گردیده است .( آمادگی جهت آزمایشات پاراکلینیکی ، تشخیصی ، جواب مشاوره و شروع اینداکشن و....)"}, {"num": 15, "text": "پیگیری انجام ،عدم انجام و دریافت آزمایشات کلینیکی و پاراکلینیکی و مشاوره ها و هرگونه اقدام درماني براي بیمار و اطلاع آن به پزشک درگزارش پرستاری ثبت می گردد."}, {"num": 16, "text": "دستورات دارويي مطابق با دستورات پزشك بطور دقيق ثبت شده است.( باذكر شكل فراورده دارويي، نام دارو ،دوز،راه مصرف ، زمان اجراي دارو ، امضاء پرسنل)"}, {"num": 17, "text": "چك راند  24 ساعت هر روز صبح انجام شده است.(  استفاده از مهر چارت راند و تکمیل آن)"}, {"num": 18, "text": "در موارد اورژانسی و شرایط خاص دستورات بصورت تلفنی از پزشک گرفته ميشود و طبق دستورالعمل دستورات تلفني اجرا و ثبت مي گردد ."}, {"num": 19, "text": "نوع زایمان( فیزیولوزیک ، استفاده از انواع  بی دردی اپیدورال، اسپینال ،انتونکس،زایمان درآب) بطور دقیق درگزارش ثبت شده است ."}, {"num": 20, "text": "نتایج اقدامات (کلینیک،پاراکلینیک )و پیگیری ها بطور دقیق در همان زمان با رعایت توالی ساعت و تاریخ به پزشک گزارش شده است."}, {"num": 21, "text": "نوع و میزان سرم بیمار،تاریخ شروع در گزارش زائو ثبت شده است."}, {"num": 22, "text": "رژیم غذائی بیمار ،نوع رژیم، روش دریافت  رژیم غذائی، میزان،تاریخ و زمان شروع ثبت شده است."}, {"num": 23, "text": "نتایج اقدامات ( کلینیک - پاراکلینیک )و پیگیری ها بصورت دقیق در محل درست با رعایت توالی ساعت و تاریخ  ثبت شده است."}, {"num": 24, "text": "هر گونه مداخله مامائی در گزارشات ثبت شده است."}, {"num": 25, "text": "آموزش های بدو بستری ، حین بستری و حین ترخیص از بلوک زایمان در گزارش زائو ثبت شده است ."}, {"num": 26, "text": "فرایند محاسبه ودادن داروهای پر خطر توسط دو کارشناس انجام وثبت وتائید وامضای گردد."}]}, {"title": "ثبت گزارش پزشك در پرونده بيمار", "items": [{"num": 1, "text": "ساعت و تاریخ دستورات ثبت شده است."}, {"num": 2, "text": "شرح حال وسیر بیماری در پرونده موجود است"}, {"num": 3, "text": "گزارش زایمان تکمیل و مهر امضا شده است."}, {"num": 4, "text": "توضیحات و آموزشهای ارایه شده توسط پزشک به بیمار و همراهان وی ثبت شده است.( آموزش حین ترخیص مهر و امضا پزشک دارد )"}, {"num": 5, "text": "فرم خلاصه پرونده تکمیل،مهر و امضا شده است."}, {"num": 6, "text": "تمام آزمايشات ، مشاوره ها و .. توسط پزشك مهر و امضا شده است ."}, {"num": 7, "text": "انجام و ثبت مراقبتهاي بيمار"}, {"num": 8, "text": "کنترل علائم حیاتی طبق دفعات انجام شده ، ثبت و انجام  گردیده است"}, {"num": 9, "text": "تعویض پانسمان ها ، مراقبت از پوست بیمار به نحو صحیح انجام و ثبت گردیده است."}, {"num": 10, "text": "OOB بیمار بر اساس پروتکل طبق دستور پزشک با رعایت زمان  دستور پزشک و اقدامات حمایتی قبل،حین و بعد از OOB شدن  همراه با آموزشهای کامل توسط ماما انجام شده است."}, {"num": 11, "text": "کنترل V/B بیمار طبق پروتکل با رعایت فواصل زمانی،روش صحیح ارزیابی، حفظ حریم خصوصی انجام می شود."}, {"num": 12, "text": "جذب و دفع  بيمار با ذكر  نوع  اتصالات بطرز صحيح انجام و در برگه ثبت شده است."}, {"num": 13, "text": "تماس پوست با پوست مادر و نوزاد بدو تولد اجرا شده ( پروتکل ساعت اول )"}, {"num": 14, "text": "تغذیه انحصاری  نوزاد با شیر مادر طبق پروتکل با رعایت صحیح فواصل زمانی،تکنیک صحیح شیردهی،حفظ حریم خصوصی مادر،  تجهیزات استاندارد صندلی،چهار پایه، بالش و...انجام و ثبت می شود."}, {"num": 15, "text": "آموزشهای مربوط به مراقبت از نوزاد از جمله تاکید بر اهمیت تغذیه با شیر مادر، علائم غیر طبیعی، دفع ادار و مدفوع،ارائه و ثبت شده است."}, {"num": 16, "text": "ویتامین کا نوزاد و واكسن هاي بعد از اولین تغذیه با شیر مادر توسط عامل نوزاد تزریق دو ثبت شده است."}, {"num": 17, "text": "تمامی تستهای تشخیصی بیمار و اقدامات درمانی مطابق با دستور پزشک اجرا گردیده است ."}, {"num": 18, "text": "کلیه آماده سازی های مربوط به هر بیمار قبل از هر اقدام تشخیصی درماني مشاوره خارج يا داخل بيمارستان بصورت ایمن انجام می شود."}]}, {"title": "ارزیابی عملکرد پرستاری در حیطه آموزش کارکنان", "items": [{"num": 1, "text": "دستور العمل و راهنمای استفاده از تجهیزات پزشکی در بخش در دسترس پرسنل وجود دارد.و پرسنل از آن آگاهی دارند."}, {"num": 2, "text": "شواهد طی دوره  های احیای قلبی ریوی، پیشگیری از عفونت بیمارستانی،......... وآموزشهای تخصصی بخش مربوطه موجود است."}, {"num": 3, "text": "پرسنل به گایدلاین و دستورالعمل مراقبتی، کتابچه فرمولاری دارویی،  خط مشی ها ی بخش و فرایند های کاری، کتابچه ایمنی و سلامت شغلی و بسته ها و دستور العمل های وزارتی مرتبط  دسترسی  و از آن آگاهی دارند."}]}, {"title": "ارزیابی عملکرد پرستاری در حیطه  آموزش به بیمار", "items": [{"num": 1, "text": "وجود شواهد ثبت آموزشهای حین بستری و ترخیص ارائه شده به بیمار بترتیب در برگه گزارشات پرستاری و فرم آموزش حین ترخیص وانعکاس آن به همراهان بیمار در صورت لزوم وجود دارد."}, {"num": 2, "text": "رسانه آموزشی و وسائل کمک آموزشی مطابق نیاز بیماران وجود دارد."}]}, {"title": "ارزیابی عملکرد پرستاری درمدیریت  امکانات ،تجهیزات و فضای مراقبتی", "items": [{"num": 1, "text": "برانکارد استاندارد مجهز به کپسول اکسیژن و پایه سرم"}, {"num": 2, "text": "امکان دسترسی به پالس اکسیمتر پرتابل جهت نقل و انتقال بیمار بدحال بین بخش و سایر واحد های تشخیصی و درمانی"}, {"num": 3, "text": "امکان برقراری سریع سیستم اکسیژن رسانی و ساکشن به ازای هر تخت بیمار در صورت نیاز"}, {"num": 4, "text": "امکان دسترسی به دستگاه مانیتور کامل جهت کنترل تعداد و ریتم ضربان قلب، تنفس و Sat  O2بیمار"}, {"num": 5, "text": "گلوکومتر سالم با نوار به تعداد کافی"}, {"num": 6, "text": "امکان دسترسی به پمپ سرنگ و دراپر در صورت نیاز بیمار"}, {"num": 7, "text": "ترالی اورژانس در محل مناسب قرار دارد و استاندارد چینش دارو و لوازم درآن رعایت شده است."}, {"num": 8, "text": "ترالی مناسب جهت انجام پروسیجرها مانند پانسمان و ........."}, {"num": 9, "text": "چک لیست دارو و تجهیزات ضروری ترالی اورژانس منضم به آخرین ویرایش آیین نامه استاندارد دارویی بخش اورژانس در یک طرف ترالی اورژانس نصب وجهت کنترل ترالی در هر شیفت مورد استفاده قرار می گیرد."}, {"num": 10, "text": "لارنگوسکوپ با تیغه های مناسب در ترالی کد وجود دارد."}, {"num": 11, "text": "آمبوبگ با کیسه ذخیره با رابط دو سر اکسیژن و ماسک با سایز مناسب مددجو بخش جهت ترالی کد وجود دارد."}, {"num": 12, "text": "ست استریل طبق نیاز بخش با تاریخ معتبر موجود است."}, {"num": 13, "text": "سیستم تهویه و سرمایش مناسب موجود است."}, {"num": 14, "text": "فضای استاندارد اتاق نگهداری وسائل کثیف و تمیز"}, {"num": 15, "text": "فضای استاندارد اتاق  شستشو و ضد عفونی لوازم"}, {"num": 16, "text": "فضای استاندارد  اتاق دارو"}, {"num": 17, "text": "دسترسی به فضای استاندارد ایزوله در صورت نیاز بیمار"}, {"num": 18, "text": "فضای استاندارد جهت انجام پروسیجرهای اسپتیک ویا خاص تشخیصی ودرمانی با توجه به نوع بخش"}, {"num": 19, "text": "کالیبراسیون سالیانه تجهیزات انجام شده است."}, {"num": 20, "text": "از قفل نمودن کشوهای ترالی خودداری می شود."}, {"num": 21, "text": "دستگاه الکترو شوک سالم آماده که در  هرشیفت کنترل می شود."}, {"num": 22, "text": "کفایت البسه خواب بیمار به ازای هرتخت ازنظر تعداد ،آراستگی و نظافت"}, {"num": 23, "text": "چیدمان وسائل و تجهیزات در فضای مراقبتی و انبارها، تمیز و مرتبط با نوع فضا می باشد."}, {"num": 24, "text": "یخچال نگهداری مواد غذایی بیماران مجزا و سالم، تمیز و فاقد برفک و در هرشیفت کنترل می شود."}, {"num": 25, "text": "یخچال دارو مجزا و مجهز به دماسنج و دمای آن در هرشیفت کنترل و ثبت می شود."}]}, {"title": "ارزیابی عملکرد پرستاری در تحویل شیفت", "items": [{"num": 1, "text": "تحویل بیماران  بربالین بیمار انجام شده، شواهد آگاهی پرسنل از گزارش کلی بخش و گزارش بیمار خود وجود دارد."}, {"num": 2, "text": "فرایند دارودهی در اتاق تریتمنت نصب است ."}, {"num": 3, "text": "شواهد آگاهی و عملکرد صحیح پرسنل از اصول دارودهی صحیح و رعایت قانون 8 R: توجه به بیمار صحیح، داروی صحیح، راه مصرف صحیح، زمان صحیح، دوز صحیح، تجویز صحیح، ثبت صحیح، توجه به پاسخ بیمار به دارو، وجود دارد."}, {"num": 4, "text": "پرسنل از داروهای مصرفی، نحوه آماده سازی، نگهداری و محاسبه دوز دارویی آگاهی کامل دارند."}, {"num": 5, "text": "داروهای ضروری در قفسه دارویی و یا یخچال دارویی طبق استاندارد نگهداری شده و از نظر تعداد وتاریخ  انقضاء کنترل می شود ."}, {"num": 6, "text": "نکات ضروری در خصوص مراقبت های دارویی انجام شده و عوارض دارویی در گزارش دارویی ثبت می شود."}, {"num": 7, "text": "در صورت بروز عوارض دارویی فرم عوارض ناخواسته دارویی تکمیل می گردد."}, {"num": 8, "text": "ویالهای باز و حل شده به شیوه صحیح نگهداری شده است ."}, {"num": 9, "text": "جدول آنتی دوت ها در بخش موجود است ."}, {"num": 10, "text": "محلولها و داروهای تزریقی در زمان تزریق  در بخش در محل مناسب آماده می شوند."}, {"num": 11, "text": "برچسب سرم بیمار صحیح ثبت شده است ."}, {"num": 12, "text": "محل تزریق وریدی و انفوزیون از نظر فلبیت و علائم نشت مایع در هر شیفت کنترل و در صورت بروز درگزارش منعکس شده است."}]}, {"title": "ارزیابی عملکرد پرستاری در  رعایت حقوق گیرنده خدمت و  موازین ایمنی", "items": [{"num": 1, "text": "بیماران دستبند شناسایی دارند."}, {"num": 2, "text": "نرده کنار تخت در بیماران بکارگرفته می شود."}, {"num": 3, "text": "استاندارد رنگ بدنه ، سایز کپسول های اکسیژن رعایت شده است."}, {"num": 4, "text": "سیستم زنگ احضار پرستار در بالای سر بیمار و در سرویس بهداشتی در دسترس و سالم است."}, {"num": 5, "text": "استاندارد برچسب گذاری و نگهداری داروهای پر خطر و مشابه  (درانبارهای دارویی، قفسه های دارویی و ترالی احیاء رعایت شده است ."}, {"num": 6, "text": "وسائل حفاظتی بیمار و پرسنل در مقابل اشعه مانند پیشبند سربی، پاراوان سربی و محافظ تیروئید وجود دارد."}, {"num": 7, "text": "پرسنل از استاندارد هموویژولانس در تزریق خون و فراورده های خونی آگاهی داشته و آن را رعایت می نمایند."}, {"num": 8, "text": "از برانکارد های اکسیژن دار و دارای نرده در هنگام انتقال بیمار استفاده می شود."}, {"num": 9, "text": "حفاظ و توری مناسب بر پنجره اتاق ها  نصب است ."}, {"num": 10, "text": "کپسول های اکسیژن پرتابل مجهز به چرخ و کمربند ایمنی می باشد و از قراردادن کپسول اکسیژن روی تخت بیمار در حین نقل و انتقال خودداری می شود."}, {"num": 11, "text": "در ارائه مراقبت پرستاری طرح انطباق رعایت شده است."}, {"num": 12, "text": "به رعایت حریم واحد مراقبتی و بکارگیری پوشش مناسب بیماران توجه شده است."}]}, {"title": "ارزیابی موازین کنترل عفونت", "items": [{"num": 1, "text": "روشویی در فواصل متناسب با تعداد تخت ها در سالن مراقبتی موجود است."}, {"num": 2, "text": "کارکنان در محل های مناسب به محلول های های هندراب دسترسی دارند."}, {"num": 3, "text": "آیا در بخش وسایل حفاظت فردی برای کارکنان وجود دارد ."}, {"num": 4, "text": "کوتاه بودن ناخن و عدم استفاده از ناخن مصنوعی و زیور آلات  توسط کارکنان رعایت می شود."}, {"num": 5, "text": "کارکنان از دانش کافی در خصوص اقدامات اولیه بدنبال مواجه با اجسام نوک تیز برخوردارند."}, {"num": 6, "text": "در جمع آوری و دفع ابزار تیز و برنده از سیفتی باکس به شیوه صحیح استفاده می گردد."}, {"num": 7, "text": "پرسنل ذیربط (کادر پرستاری و خدمات) با کاربرد و نحوه رقیق سازی مواد ضد عفونی آشنایی دارند."}, {"num": 8, "text": "فرایند شستشو و ضد عفونی ابزار به نحو صحیح اجرا و نظارت می شود ."}, {"num": 9, "text": "بعد از ترخیص بیمار،شستشو و ضد عفونی تخت و لاکر صورت می گیرد."}, {"num": 10, "text": "از گوشی مجزا جهت سمع هر بیمار استفاده می گردد."}, {"num": 11, "text": "دستورالعمل زمان استاندارد تعویض اتصالات  و کاتترهای متصل به بیمار رعایت می شود."}, {"num": 12, "text": "از آب مقطر استریل در محفظه فلومتر اکسیژن، دستگاه بخور و چمبر هیومدیفایر در صورت بکارگیری استفاده می شود."}, {"num": 13, "text": "بیماران در تخت تمیز و آراسته می باشند."}, {"num": 14, "text": "تی سالم با رنگ مجزا جهت فضا های مختلف موجود است و پس از شستشو در محل تی شویی و دارای تهویه مناسب آویزان میشود."}, {"num": 15, "text": "فاضلاب و یا سینک مجزا جهت تخلیه و دفع ترشحات بیماران وجود دارد."}, {"num": 16, "text": "تفکیک زباله های عفونی و غیر عفونی بدرستی انجام می شود."}]}, {"title": "ارزیابی عملکرد پرستاری در رضایتمندی بیمار و همراه", "items": [{"num": 1, "text": "بیمار از نحوه برخورد کادر پرستاری رضایت دارند."}, {"num": 2, "text": "بیمار از پاسخ بموقع پرستار رضایت دارند ."}, {"num": 3, "text": "بیمار از تامین تسهیلات لازم برای خود رضایت دارند."}]}, {"title": "ارزیابی عملکرد پرستاری در ارائه  مراقبت", "items": [{"num": 1, "text": "عملکرد و مستندات گزارشات مراقبتی نشانگر اجرای مراقبت صحیح در زمینه رفع نیازهای تغذیه ای بیمار است ."}, {"num": 2, "text": "عملکرد و مستندات گزارش نشانگر اجرای مراقبت صحیح از مخاط و پوست سالم و زخم های بیمار است."}, {"num": 3, "text": "عملکرد و مستندات گزارش نشانگر اجرای مراقبت صحیح در رفع نیاز دفعی بیمار است."}, {"num": 4, "text": "عملکرد و مستندات گزارش نشانگر اجرای مراقبت صحیح از مسیرهای ماندگار وریدی و شریانی محیطی و مرکزی است."}]}], "defaultWard": "بلوک زایمان"}, {"id": "dialysis_supervisor", "title": "چک لیست ارزیابی بخش همودیالیز توسط سوپروایزران", "docCode": "MC-CL-011", "chapters": [{"title": "ارزیابی عملکرد سرپرستار در حیطه مدیریت خدمات", "items": [{"num": 1, "text": "کادر پرستاری از اتیکت و پوشش مصوب استفاده می کنند."}, {"num": 2, "text": "شواهد و مستندات برگزاری جلسات درون بخشی پرسنل و سرپرستار  و برنامه ریزی جهت اصلاح روشها و ارتقاءکیفیت خدمات  موجود است."}, {"num": 3, "text": "شرح وظایف به تفکیک رده های پرسنل موجود است."}, {"num": 4, "text": "استاندارد برنامه نویسی در تنظیم برنامه ماهیانه  بخش رعایت شده است.(نسبت یک پرستار به سه بیمار)"}, {"num": 5, "text": "شواهد مدیریت مناسب  ارائه خدمات (وجود فرایند بالینی و غیر بالینی،   وجود  امکانات وملزومات، دستورالعمل اجرا،کنترل  و نگهداشت آن ) و انجام  پایش خدمات  موجود است."}, {"num": 6, "text": "ایستگاه پرستاری ومحل استقرار پرستاران مشرف به بیماران است ."}]}, {"title": "ارزیابی عملکرد پرستاری در ثبت اطلاعات در پرونده و  فلو چارت بیماران", "items": [{"num": 1, "text": "مشخصات کامل بیمار روی جلد پرونده وشیت دیالیزوفرم یافته های آزمایشگاهی ، فرم  ارزیابی کفایت دیالیز و  کلیه اوراق بطور کامل ثبت شده است."}, {"num": 2, "text": "دستورات پزشک با ثبت تعداد موارد به حروف و شماره معکوس و درج ساعت و تاریخ توسط چک کننده امضاء شده و سپس با یک خط مستقیم به گونه ای بسته شده است که جایی برای اضافه کردن دستورات نمی باشد."}, {"num": 3, "text": "گزارشات به طور خوانا ، متوالی،فقط با خودکار آبی و مشکی و فاقد فضای خالی و در هر شیفت ثبت و پایان گزارش بسته شده است."}, {"num": 4, "text": "گزارش بدون خط خوردگی و لاک گرفتگی است.و در صورت خط خوردگی ،در بالای آن کلمه اصلاح شد نوشته شده  و در پایان تعداد موارد خط خوردگی با حروف ذکر شده، مهر، امضا و سمت فرد مشخص شده باشد ."}, {"num": 5, "text": "اولين ارزيابي بيمار دربرگه ارزیابی اولیه درمحدوده زماني تعيين شده انجام و ثبت شده است."}, {"num": 6, "text": "نتایج آزمایش ها و ....بر اساس دستور العمل وزارت به ترتیب  تاریخ انجام در برگه های مربوطه پرونده نصب شده است."}, {"num": 7, "text": "به موارد حائز اهمیت در گزارش دیالیز  اشاره شده است :(تاریخ ،ساعت شروع دیالیز،  نوع دسترسی عروقی ،وضعیت ، ترشحات،و پانسمان آن ، نوع و شماره ماشین دیالیز،   دمای محلول دیالیز،  دور دستگاه ،  نوع بافر، نوع صافی،  غلظت سدیم محلول اولترافیلتراسیون،  دوز هپارین،  وزن قبل وبعد از دیالیز،   فشار وریدی و شریانی ،  فشار TMP-مشکلات و عوارض  ، آزمایشات حین و بعد دیالیز ،  ویزیت ها و اقدامات،مشاوره ها  و داروهای خاص حین دیالیز ،  نام پرستار)"}, {"num": 8, "text": "کنترل ،محاسبه و اجرای  دستورات داروهای پر خطر (دیگوکسین  وریدی-انسولین-مخدرها- اولین دوز آنتی بیوتیک های وریدی – تغذیه کامل وریدی-دوز کودکان از ویالهای چند دوزی- خون و فراورده های خونی – کلرور پتاسیم)  توسط دو کارشناس پرستاری انجام، ثبت ، تائید و امضا می شود ."}, {"num": 9, "text": "اجرای دستورات مشاوره مشروط به دستور مجددتوسط پزشک معالج است."}, {"num": 10, "text": "استاندارد اجرای دستورات تلفنی رعایت می شود. (موارد دستوری با امضای دو پرستار دستور گیرنده و شاهد در پرونده مکتوب گردیده است.)"}]}, {"title": "ارزیابی عملکرد پرستاری در کاردکس نویسی", "items": [{"num": 1, "text": "دستور العمل تکمیل کاردکس در صفحه اول کاردکس بخش وجود دارد."}, {"num": 2, "text": "به موارد مهم در کاردکس نویسی توجه شده  شامل:خوانا بودن موارد ثبت شده"}, {"num": 3, "text": "ثبت مشخصات بیمار و نوع بیمه"}, {"num": 4, "text": "ثبت اطلاعات  خاص با خودکار قرمز"}, {"num": 5, "text": "تکمیل ستون ریسک فاکتور"}, {"num": 6, "text": "ثبت موارد ثابت با خودکار آبی(مشخصات بیمار- دارو –سرم – آزمایشات و تست  پاراکلینیک انجام شده )"}, {"num": 7, "text": "ثبت اطلاعات متغیر با مداد(تستهای آزمایشگاه و پاراکلینیک قبل از انجام – موارد لازم جهت پیگیری- زمان کنترل  علائم  حیاتی-رژیم غذایی- وضعیت  مجاز حرکتی بیمار- تغییر پوزیشن- مشاوره ها)"}, {"num": 8, "text": "عدم استفاده از علائم اختصاری غیر مجاز"}, {"num": 9, "text": "ثبت صحیح موارد stat"}, {"num": 10, "text": "ثبت ساعت انجام اقدامات"}, {"num": 11, "text": "کلیه موارد مهم در کاردکس ثبت شده است ."}, {"num": 12, "text": "ثبت دستورات دیالیز بیمار:(مدت دیالیز- تعداد جلسات هفتگی-فلوی خون- فلوی محلول دیالیز- نوع  صافی، درجه حرارت محلول – میزان هپارین- نوع دسترسی وریدی- روش هپارینیزاسیون-تاریخ گرافت یا فیستول)"}, {"num": 13, "text": "دستورات انفوزیون خون"}, {"num": 14, "text": "وضعیت مارکر های ویروسی"}, {"num": 15, "text": "تاریخ تزریق  ودوزهای واکسن و بوستر"}, {"num": 16, "text": "ثبت دستورات داروهای تزریقی و خوراکی با ذکر تاریخ شروع بویژه داروهای خاص (آنتی بیوتیک ها- کورتیکواستروئید ها- ضد انعقادها)"}, {"num": 17, "text": "پروسیجرهای خاص انجام شده"}, {"num": 18, "text": "پاکنویس کاردکس در صورت لزوم  به نحو صحیح انجام شده است."}]}, {"title": "ارزیابی عملکرد پرستاری  در  ثبت اطلاعات در دفاتر بخش", "items": [{"num": 1, "text": "دفتر پذیرش بخش حاوی کلیه اطلاعات لازم (ردیف ، نام بیمار، نام پدر، شماره پرونده ،کد پذیرش ،تاریخ تولد، کد ملی ،نوع بیمه ، تاریخ  پذیرش در بخش، نام پزشک معالج،دیالیز دائم ،دیالیز موقت، شماره تلفن و آدرس) می باشد."}, {"num": 2, "text": "وسایل بخش ، تجهیزات پزشکی و ترالی احیاء  با دفتر تحویل وسایل در هر شیفت کنترل می شود ."}, {"num": 3, "text": "تقسیم کار پرسنل در هر شیفت به تفکیک بیماران و وظایف محوله در دفتر مربوطه ثبت می شود."}, {"num": 4, "text": "مستند انجام   ارزشیابی منظم  پرسنل در دفتر  مربوطه با ذکر نام پرسنل، نکات مثبت و منفی، مستندات با ذکر تاریخ و ساعت) موجود است ."}, {"num": 5, "text": "مستند ثبت اطلاعات  تحویل و مصرف داروهای مخدر در دفتر مربوطه  با ذکراطلاعات لازم (نام بیمار-نام پزشک- نام دارو – دوز مصرفی- نام پرستار ) موجود است ."}, {"num": 6, "text": "فرم جابجایی مشخص در جابجایی و تعویض برنامه  شیفت کاری  با ذکر اطلاعات لازم(نام درخواست کننده – نام جایگزین – شیفت مورد نظر - امضای مقام ماً فوق  و متقاضیان ) مورد استفاده قرار می گیرد."}, {"num": 7, "text": "مستند  ثبت گزارش حوادث رخ داده در بخش موجود است."}, {"num": 8, "text": "برنامه ماهیانه گروه احیاء طبق استاندارد ابلاغی وزارت متبوع وجوددارد."}]}, {"title": "ارزیابی عملکرد پرستاری در حیطه آموزش کارکنان پرستاری", "items": [{"num": 1, "text": "مستندات انجام نیاز سنجی آموزشی،برنامه ریزی و اجرای آموزش های حین خدمت پرسنل بخش وجود دارد."}, {"num": 2, "text": "برد آموزشی وجود دارد."}, {"num": 3, "text": "پرسنل به گاید لاینها و دستور العملهای مراقبتی،کتابچه فرمولاری دارویی- خط مشی ها ی بخش و فرایند های کاری و پروتکل های دیالیز(هایپر کالمی-و ......) –کتابچه ایمنی و سلامت شغلی و بسته ها و دستور العمل های مرتبط  دسترسی دارند."}, {"num": 4, "text": "مستندات گذرانیدن دوره سالیانه دوره دیالیز و احیای قلبی ریوی جهت هر پرسنل وجود دارد."}]}, {"title": "ارزیابی عملکرد پرستاری در حیطه  آموزش به بیمار", "items": [{"num": 1, "text": "وجود فرم تکمیل شده  آموزشهای ارائه شده  به بیمار بویژه در رابطه با تغذیه ،کنترل وزن ، مصرف داروها ،پیشگیری از عفونت ،مراقبت از کاتتر و فیستول ، کنترل عوارض ومراقبت ازخود، در پرونده بیماران موجود است.(مهر و امضای آموزش دهنده و نام و امضای آموزش گیرنده ) و یک نسخه با ترخیص به بیمار تحویل داده می شود ."}, {"num": 2, "text": "رسانه آموزشی و وسائل کمک  آموزشی مطابق نیاز بیماران وجود دارد."}]}, {"title": "ارزیابی عملکرد پرستاری درمدیریت  امکانات ،تجهیزات و فضای مراقبتی", "items": [{"num": 1, "text": "امکانات و تجهیزات و فضاهای مراقبتی  مناسب در بخش جهت دستیابی به اهداف مراقبتی وجود دارد شامل: تجهيزات احياء"}, {"num": 2, "text": "ترالی اورژانس کامل طبق دستور العمل وزارت متبوع  در محل مناسب (کنار راهرو یا روبروی ایستگاه پرستاری)"}, {"num": 3, "text": "تخته احیاء در اندازه مناسب"}, {"num": 4, "text": "کپسول اکسیژن متصل به ترالی  با مانومتر"}, {"num": 5, "text": "وجود ست لارنگوسکوپ با تیغه های مناسب"}, {"num": 6, "text": "لوله تراشه یکبار مصرف به تعداد و سایز مناسب مددجو بخش با کانکشن مناسب"}, {"num": 7, "text": "وجود ايروي و ماسك صورت در سايزهاي مناسب"}, {"num": 8, "text": "آمبوبگ با کیسه ذخیره (با حجم مناسب) با رابط دو سر اکسیژن با توجه به سایز مناسب مددجو بخش"}, {"num": 9, "text": "مانیتورینگ کامل یا پالس اکسیمتر با پروب مناسب مددجو بخش"}, {"num": 10, "text": "دستگاه الکترو شوک سالم و آماده"}, {"num": 11, "text": "ست معاینه به تعداد کافی"}, {"num": 12, "text": "یخچال دارو (مجهز به دماسنج  و رطوبت سنج)و یخچال نگهداری غذا"}, {"num": 13, "text": "استوک ست استریل( ستهای پانسمان وسوچور با تاریخ معتبر)"}, {"num": 14, "text": "پمپ سرنگ و پمپ انفوزیون به تعداد کافی طبق نیاز و نوع بخش"}, {"num": 15, "text": "دستگاه ساکشن پرتابل و یا سیستم ساکشن مرکزی"}, {"num": 16, "text": "وسایل رفاهی : تلویزیون ، تلفن آزاد رایگان، یخچال،آب سرد کن، سرویس توالت فرنگی و صندلی همراه بیمار"}, {"num": 17, "text": "تمیزی ،منظم بودن چیدمان وسائل و تجهیزات در بخش"}, {"num": 18, "text": "وجود راهنمای استفاده از تجهیزات در کنار هر دستگاه"}, {"num": 19, "text": "فضای استاندارد شستشو وسائل وجود دارد."}, {"num": 20, "text": "فضای استاندارد  اتاق دارو وجود دارد."}, {"num": 21, "text": "فضای استاندارد اتاق نگهداری وسائل کثیف و تمیز وجود دارد."}, {"num": 22, "text": "وجود سیستم تهویه هوا در بخش وجود دارد."}]}, {"title": "ارزیابی عملکرد پرستاری در تحویل شیفت", "items": [{"num": 1, "text": "تحویل بیماردر بالین انجام می شود"}, {"num": 2, "text": "تحویل بیمار  با حضور تمامی پرسنل دو شیفت انجام می گیرد."}, {"num": 3, "text": "گزارش مراقبتی  کاملی از بیمار ارائه می گردد."}, {"num": 4, "text": "گزارش کل بخش ارائه می گردد."}]}, {"title": "ارزیابی عملکرد پرستاری در دارو درمانی", "items": [{"num": 1, "text": "خط مشی دارودرمانی در بخش وجود  دارد و اجرا می شود."}, {"num": 2, "text": "مستندات کنترل دوره ای تاریخ انقضاءداروهای بخش(ترالی اورژانس،یخچال ،استوک داروهای ضروری بخش)موجود است."}, {"num": 3, "text": "مراحل صحیح دارو دهی رعایت می گردد."}, {"num": 4, "text": "پرسنل از داروهای مصرفی –نحوه آماده سازی-نگهداری و محاسبه دوز دارویی آگاهی کامل دارند."}, {"num": 5, "text": "نکات ضروری در خصوص مراقبت های دارویی انجام شده و عوارض دارویی در گزارش دارویی ثبت می شود."}, {"num": 6, "text": "در صورت بروز عوارض دارویی فرم عوارض ناخواسته دارویی تکمیل می گردد."}, {"num": 7, "text": "ویالهای باز و حل شده دارای بر چسب ،ساعت و تاریخ است و به زمان انقضای آن توجه شده و به شیوه صحیح نگهداری می شود."}, {"num": 8, "text": "داروهای  آنتی دوت ها و لیست آن بنا بر نیاز بخش موجود است."}, {"num": 9, "text": "فرایند دارودهی در اتاق تریتمنت نصب است."}, {"num": 10, "text": "داروهای تزریقی در زمان تزریق  در بالین بیمارآماده می شوند."}]}, {"title": "ارزیابی عملکرد پرستاری در  رعایت حقوق گیرنده خدمت و  موازین ایمنی", "items": [{"num": 1, "text": "آیا کادر درمان به بیمار معرفی می گردند ."}, {"num": 2, "text": "آیا کادر پرستاری در بدو ورود درمورد بخش و مقررات آن به بیمار آموزش داده اند."}, {"num": 3, "text": "آیا در ارائه مراقبت پرستاری طرح انطباق رعایت شده است."}, {"num": 4, "text": "آیا بیمار و همراه او از نحوه برخورد ،پاسخ بموقع پرستار و تامین تسهیلات لازم برای خود و بیمار رضایت دارند."}, {"num": 5, "text": "آیا پرسنل از حقوق مراقبتی بیمار محتضر آگاهی دارند."}, {"num": 6, "text": "پرسنل آموزش لازم را در خصوص مواجهه با حوادث دیده اند(سقوط بیمار از تخت ،حریق،نزاع وپارگی ست و صافی ...)"}, {"num": 7, "text": "فرایند تعریف شده جهت اطمینان از اجرای صحیح قانون 5R وجود دارد. (بکارگیری داروی درست- روش درست- راه درست- زمان درست-مقدار درست-فرد درست )"}, {"num": 8, "text": "کپسول های اکسیژن  پرتابل مجهز به  چرخ و کمر بند ایمنی می باشد."}, {"num": 9, "text": "شواهد توجه و آگاهی پرسنل به قفل بودن وسایل چرخدار مثل ویلچر و برانکارد قبل از قرار گرفتن بیمار در آن وجود دارد."}, {"num": 10, "text": "دستور العمل بکارگیری   و نصب ایمن کپسول پر و شارژ شده اطفای حریق در محل های مناسب در بخش  وجود دارد."}, {"num": 11, "text": "از مهارهای ایمن جهت کنترل بیماران بیقرارمثل : مچ بند-آتل  روکش دار استفاده می شود."}, {"num": 12, "text": "نرده کنار تخت در بیماران خواب-سالمند- غیر هوشیار و ضعیف و اطفال بکارگرفته می شود."}, {"num": 13, "text": "زنگ احضار پرستار در سرویس بهداشتی بیمار وجود دارد."}, {"num": 14, "text": "حفاظ و توری مناسب بر پنجره اتاق ها  نصب است ."}, {"num": 15, "text": "استاندارد رنگ،کد و کاور  کپسول های اکسیژن رعایت شده است."}]}, {"title": "ارزیابی موازین کنترل عفونت", "items": [{"num": 1, "text": "ناخن  پرسنل کوتاه و از ناخن مصنوعی و زیور آلات  توسط کارکنان استفاده نمی شود."}, {"num": 2, "text": "دستشویی تمیز و  مناسب به تعداد کافی جهت پرسنل و بیمار موجود است .(در اتاق معاینه- تریتمنت- اتاق بیماران)"}, {"num": 3, "text": "مستندات کنترل تیتر آنتی ژن و آنتی بادی هپاتیت در پرسنل در بدو بکارگیری و دوره ای ودر پرسنل در معرض خطر و اجرای تمهیدات واکسیناسیون و پوسترموجود است ."}, {"num": 4, "text": "واکسیناسیون هپاتیت ب در سه نوبت برای پرسنل انجام شده است ."}, {"num": 5, "text": "آیا کارکنان  در محلهای مناسب به محلولهای های هند راب مناسب دسترسی دارند.(تریتمنت-اتاق معاینه-ترالی اورژانس-ترالی پانسمان-ترالی دارو-بر بالین بیمار)"}, {"num": 6, "text": "آیا پرسنل از لزوم استفاده از محافظ چشم گان ماسک و دستکش مجزا برای هر بیمار( دستکش جداگانه برای قطع و وصل  بیمار )آگاهی دارند."}, {"num": 7, "text": "آیا کارکنان از دانش کافی در خصوص تزریقات ایمن واقدامات اولیه بدنبال مواجهه با اجسام نوک تیز برخوردارند."}, {"num": 8, "text": "در جمع آوری و دفع ابزار  تیز و برنده از سیفتی باکس به شیوه صحیح استفاده می گردد (محل بکارگیری ،حجم  و محل تخلیه :حداکثر تا 4/3 پر  وحداکثر تا 5 روزنگهداری شده)."}, {"num": 9, "text": "آیا ملحفه هر بیمار بعد از انجام دیالیز جهت بیمار بعدی تعویض می شود."}, {"num": 10, "text": "آیا کیسه زباله هر بیمار بعد از اتمام دیالیز تعویض می شود."}, {"num": 11, "text": "سطح دستگاه دیالیز در بین دو دیالیز و در انتهای هر روز به شیوه صحیح  با محلول با پایه الکلی مناسب  طبق قوانین شرکت سازنده دستگاه ،ضد عفونی می شود ."}, {"num": 12, "text": "آیا پرسنل  از شیوه  گندزدایی سطوح آلوده به خون آگاهی دارند."}, {"num": 13, "text": "وجود سرویس بهداشتی مجزای بیمار و پرسنل"}, {"num": 14, "text": "نکات ایزوله در مورد بیمار آنتی ژن مثبت رعایت می شود. دستگاه دیالیز مجزا-فضا و مراقبت ایزوله با پرسنل مجزا"}, {"num": 15, "text": "پرسنل از اهمیت استفاده از ماسک توسط پرسنل و بیمار و بکارگیری  شان پرفوره  و یا گاز استریل در زیر ناحیه  و نیز فیکس و ثابت نگهداشتن محل کاتتر  در مراقبت از بیماران دارای کاتتر موقت یا دائم آگاهی دارند."}, {"num": 16, "text": "پس از اتمام دیالیز محل کاتتر موقت پانسمان می شود ."}, {"num": 17, "text": "فرایند شستشو و ضد عفونی ابزار تعریف و به نحو صحیح  اجرا می شود ."}, {"num": 18, "text": "ازبکارگیری یک باتل سرم مشترک در حل و رقیق سازی داروهای کلیه بیماران بخش به جای آب مقطر خودداری می شود ."}, {"num": 19, "text": "استفاده از آب مقطر استریل در محفظه فلومتر اکسیژن"}, {"num": 20, "text": "تفکیک زباله های عفونی و غیر عفونی بدرستی انجام می شود."}, {"num": 21, "text": "آیا پرسنل ذیربط  با کاربرد و نحوه رقیق سازی مواد ضد عفونی آشنایی دارند"}, {"num": 22, "text": "آیا محل تی شویی نورگیر و دارای تهویه مناسب میباشد و  تی سالم  با رنگ مجزا جهت فضا های مختلف موجود و پس از شستشو آویزان می شود."}, {"num": 23, "text": "بیماران در ظاهر تمیز به نظر میرسند و در تخت تمیز و آراسته می باشند."}, {"num": 24, "text": "مستند کنترل منظم  کیفی آب RO بخش و محلول رقیق شده دیالیز  از نظر باکتریولوژیکی (جریان ورودی و خروجی آب RO ماهانه ) و شیمیایی(هر سه ماه یکبار )موجود است ."}]}, {"title": "ارزیابی عملکرد پرستاری در رضایتمندی بیمار و همراه", "items": [{"num": 1, "text": "بیمارستان رضایت گیرنده خدمت را مورد سنجش قرار می دهد."}, {"num": 2, "text": "اقدامات اصلاحی بر اساس نتایج رضایت سنجی انجام شده است."}, {"num": 3, "text": "بیمار از نحوه برخورد کادر پرستاری رضایت دارند."}, {"num": 4, "text": "بیمار از پاسخ بموقع پرستار رضایت دارند ."}, {"num": 5, "text": "بیمار از تامین  تسهیلات لازم برای خود و بیمار رضایت دارند."}]}, {"title": "ارزیابی عملکرد پرستاری در ارائه  مراقبت", "items": [{"num": 1, "text": "پرستار از اقدامات پرستاری  مربوط به بیماردر حین دیالیز (کنترل علائم حیاتی،وزن خشک،اضافه وزن،مراقبت از دسترسی عروقی،توجه به نتایج آمایشگاهی،   ثبت داده ها در دیالیز شیت،هپارینیزاسیون  و آموزش به بیمار)آگاهی دارند."}, {"num": 2, "text": "پرستار از اقدامات پرستاری  مربوط به ماشین(انواع صافی،شیوه پرایم،تنظیم مدت دیالیز،میزان جریان خون،میزان جریان محلول  و تعیین میزان اولترافیلتراسیون آگاهی دارند."}, {"num": 3, "text": "پرستار از اقدامات و مهارت لازم پرستاری در برخورد با عوارض حین دیالیز) آگاهی دارند."}, {"num": 4, "text": "وضعیت عروق بیمار قبل از وصل کنترل و ثبت می گردد."}, {"num": 5, "text": "وزن بیمار قبل و بعد از دیالیز کنترل و ثبت می شود."}, {"num": 6, "text": "فشار خون بیمار قبل و  حد اقل حین دیالیز  ساعتی یک بار ودر  بیماران بد حال هر 15 دقیقه کنترل و ثبت می شود."}, {"num": 7, "text": "عملکرد و مستندات گزارش نشانگر اجرای  مراقبت صحیح در  ساکشن بیمار(رعایت اصول احتیاطات استاندارد و پیشگیری از عفونت ، بکارگیری فشارمکش  مناسب  با استفاده از مانومتر و رابط مناسب(فینگر تیپ) است ."}, {"num": 8, "text": "عملکرد و مستندات گزارش نشانگر اجرای  مراقبت صحیح در  اکسیژن تراپی( توجه به نیاز بیمار، شیوه و میزان تجویزشده –توجه به سطح آب مقطر فلومتر -محافظت از مخاط ) است ."}]}], "defaultWard": "دیالیز"}, {"id": "csr_supervisor", "title": "چک لیست ارزیابی واحد استريليزاسيون توسط سوپروایزران", "docCode": "MC-CL-012", "chapters": [{"title": "شرایط کلی واحد استریلیزاسیون", "items": [{"num": 1, "text": "کارکنان از اهمیت کارخود در بخش CSR آگاهی دارند."}, {"num": 2, "text": "مسئول CSR فردی با تجربه کارشناس وحتی الامکان کارشناس پرستاری می باشد."}, {"num": 3, "text": "کارکنان دارای پرونده بهداشتی هستند وبطور دوره ای معاینه پزشکی می شوند."}, {"num": 4, "text": "CSR در کنار اتاق عمل یا در نزدیکی آن قرار دارد."}, {"num": 5, "text": "دیوارها تا سقف از جنس کاشی یا سنگ و کف از جنس قابل شستشو و بدون درز می باشد."}, {"num": 6, "text": "در ورودی بخش مکانی به عنوان رختکن پرسنل وجود دارد."}, {"num": 7, "text": "لباس های پرسنل هفته ای دو مرتبه تعویض و شستشو می شود."}, {"num": 8, "text": "فضای فیزیکی بخش دارای چهار ناحیه مربوط به پرسنل، تفکیک لوازم آلوده و شستشو، ناحیه تمیز و ناحیه استریل می باشد"}, {"num": 9, "text": "مسیر تردد یک طرفه از ناحیه کثیف و تمیز برقرار می باشد."}, {"num": 10, "text": "جریان هوا از ناحیه استریل به کثیف و حداقل 10 بار در ساعت انجام می گردد."}, {"num": 11, "text": "درجه حرارت محل نگهداری وسایل استریل 25-18 و رطوبت کمتر از 50-35 درصد می باشد."}, {"num": 12, "text": "پرسنل بر علیه هپاتیت واکسینه شده و از تیتر آنتی بادی خود اطلاع دارند ."}, {"num": 13, "text": "از شستشو و ضدعفونی وسایل یکبار مصرف خودداری می شود."}, {"num": 14, "text": "از استفاده از پنکه، فن یا هر وسیله که تولید گردوخاک کند خودداری می شود."}, {"num": 15, "text": "شناسنامه و دستورالعمل نحوه کار با تجهیزات موجود است"}, {"num": 16, "text": "پرسنل از کالیبر و سالم بودن دستگاهها آنها مطمئن هستند."}, {"num": 17, "text": "در صورت گذشتن تاریخ انقضاء ست ها، بسته بندی و اندیکاتور کاملا عوض شده و سپس مجددا در اتوکلاو گذاشته شود."}, {"num": 18, "text": "تی شویی تمیز و بدون جرم و تی های رنگ بندی شده برای هر ناحیه وجود دارد."}, {"num": 19, "text": "از استفاده از جاروی خشک و دستمال خشک در محیط بخش خودداری می شود."}, {"num": 20, "text": "دفتر برای ثبت ابزارهای تحویلی به بخش وجود دارد."}, {"num": 21, "text": "برنامه برای نظافت روزانه و شستشوی هفتگی در بخش موجود است."}, {"num": 22, "text": "در بخش حداقل برای 48 ساعت وسایل استریل موجود است."}, {"num": 23, "text": "سیستم اطفاء حریق ونشت گاز موجود وسالم است."}, {"num": 24, "text": "پکها یا ستهای داخل اتوکلاو به فاصله 5 سانتی متر از هم قرار دارند."}]}, {"title": "ناحیه کثیف", "items": [{"num": 1, "text": "وسایل لازم برای شستشوی دست موجود است."}, {"num": 2, "text": "دریافت وسایل کثیف از بخش ها و اتاق عمل از طریق پنجره انجام می شود."}, {"num": 3, "text": "در هنگام واشینگ ابزار از عینک یا شیلد محافظ، گان، پیش بند پلاستیکی، دستکش لاتکس بلند و ضخیم، کلاه، ماسک، روکفشی و دمپایی قابل اتوکلاو استفاده می شود."}, {"num": 4, "text": "پرسنل قبل از شروع به کار و در زمان اتمام کار دستها را با مایع صابون می شویند."}, {"num": 5, "text": "تمامی وسایل و ابزار و ست ها از نظر وجود احتمالی ابزار تیز و برنده مثل سوزن و بیستوری بازبینی می شوند."}, {"num": 6, "text": "ناحیه شستشو دارای دو سینک بزرگ و عمیق استیل تمیز و بدون جرم است."}, {"num": 7, "text": "وسایل ابتدا در محلول شوینده یا محلول آنزیم دار غوطه ور می شوند."}, {"num": 8, "text": "قطعات ابزارهای قابل جداسازی قبل از غوطه وری از هم جدا می شوند."}, {"num": 9, "text": "ابزار در زیر سطح آب به دقت و با برس نرم غیرفلزی برس کشی می شوند."}, {"num": 10, "text": "پس از مدت زمان مشخص آب کشی ابزار با آب سرد انجام می گیرد."}, {"num": 11, "text": "داخل لوله ها و لومن ها با استفاده از آب پر فشار یا سرنگ و آب سرد کاملاً پاکسازی می شوند."}, {"num": 12, "text": "ابزار پس از آبکشی با پارچه تمیز یا هوای فشرده یا الکل خشک می شوند."}, {"num": 13, "text": "از دستگاه اولتراسونیک برای پاکسازی جرم گیری قسمت های غیرقابل دسترسی ابزار استفاده می شود."}, {"num": 14, "text": "ابزار پس از آب کشی کامل و خشک کردن، داخل محلول ضد عفونی کننده استاندارد به مدت لازم ( طبق توصیه کارخانه سازنده) قرار گرفته و سپس آبکشی می گردند."}, {"num": 15, "text": "فرد مسئول اتاق شستشو از نحوه رقیق کردن محلول ضدعفونی آگاهی دارد."}, {"num": 16, "text": "نام محلول، تاریخ رقیق سازی و تاریخ انقضاء به صورت واضح روی ظرف غوطه وری نوشته شده است."}, {"num": 17, "text": "ظرف غوطه وری درب دار و تمیز و بدون جرم است."}, {"num": 18, "text": "ابزار پس از آبکشی نهایی با پارچه تمیز یا هوای فشرده یا الکل خشک می شوند."}, {"num": 19, "text": "ابزار آلوده یا مشکوک به ویروس های HIV ،HBV,HCV، ایبولا و موارد مشابه در کیسه های زرد تحویل گرفته و قبل از هر کار در ظرف محتوی محلول ضدعفونی کننده غوطه ور می شوند."}, {"num": 20, "text": "از نظافت و پاکسازی ابزار اطمینان حاصل می شود.( از طریق مشاهده، چک لیست و یا سوآپ پروتئین چک)"}, {"num": 21, "text": "برس ها در پایان روز در محلول ضدعفونی کننده غوطه ور می شوند."}, {"num": 22, "text": "در صورت استفاده از ماشین شستشو، چیدمان ابزار صحیح است."}, {"num": 23, "text": "ماشین شستشو وضعیت بهداشتی مناسب دارد."}, {"num": 24, "text": "اتاق شستشو دارای تهویه سالم و قوی و فیلتراسیون هوا حداقل 10 بار در ساعت است."}]}, {"title": "ناحیه تمیز", "items": [{"num": 1, "text": "وسایل لازم برای شستشوی دست پرسنل وجود دارد."}, {"num": 2, "text": "ناحیه تمیز دارای میز کار سالم و بهداشتی است."}, {"num": 3, "text": "ابزا شسته و خشک شده از طریق پنجره به ناحیه تمیز تحویل داده می شود."}, {"num": 4, "text": "در ناحیه تمیز عملکرد و کارایی و تمیزی ابزار با استفاده از ذره بین شیشه ای کنترل می شود."}, {"num": 5, "text": "در صورت سفتی و خشکی ابزار لولادار روغن کاری با اسپری محلول در آب انجام می شود."}, {"num": 6, "text": "ابزار همواره سالم، بدون هرگونه آلودگی و بدون جرم هستند."}, {"num": 7, "text": "در صورت استفاده از پارچه، از پارچه های سالم و بدون سوراخ و تمیز جهت پکینگ استفاده می شود ."}, {"num": 8, "text": "از کاغذ کرپ مناسب ضد آب جهت بسته بندی استفاده می شود."}, {"num": 9, "text": "از استفاده از کاغذ گراف برای بسته بندی خودداری می شود."}, {"num": 10, "text": "داخل بسته های بزرگ از اندیکاتور شیمیائی کلاس 6  استفاده می شود."}, {"num": 11, "text": "داخل بسته های کوچک از اندیکاتور شیمیائی کلاس 4  استفاده می شود ."}, {"num": 12, "text": "از اندیکاتور بیولوژیک بصورت هفتگی استفاده می شود."}, {"num": 13, "text": "از اندیکاتور بیولوژیک قبل از استریل کردن ایمپلنت و بعد از تعمیر اتوکلاو استفاده می شود."}, {"num": 14, "text": "جواب اندیکاتور بیولوژیک به صورت کتبی با مهر و امضاء آزمایشگاه در بخش نگهداری می شود."}, {"num": 15, "text": "روزانه در شروع کار هر اتوکلاو از تست بووی دیک استفاده شده و نتیجه در بخش نگهداری می شود."}, {"num": 16, "text": "برای هر سیکل یک تست شاهد ( اندیکاتور 5 یا 6) در یک بسته قرار داده شده و نتیجه در بخش نگهداری می شود."}, {"num": 17, "text": "ابعاد بسته ها مناسب ( حداکثر 30×30×50) و وزن حداکثر 5/5 الی 6کیلو گرم و نوع بسته بندی آنها خیلی فشرده نیست."}, {"num": 18, "text": "روی بسته ها تست نواری به طول 10cm نصب می گردد."}, {"num": 19, "text": "مشخصات بسته ها ( نام پک، نام فرد پک کننده، شماره اتوکلاو، شماره سیکل، تاریخ استریل و تاریخ انقضاء و نام بخش) بر روی آنها  نوشته می شود."}, {"num": 20, "text": "پرسنل از چیدمان صحیح  بسته ها در دستگاه اتوکلاو آگاهی دارند."}, {"num": 21, "text": "ابزارهای لولایی ( مثل قیچی و پنس) به گونه ای در بسته ها قرار داده می شوند که بخار به داخل آنها نفوذ کند."}, {"num": 22, "text": "از پر کردن زیاد محفظه دستگاه خودداری می شود ( حداکثر 80 درصد ظرفیت)."}, {"num": 23, "text": "جنس بدنه و مخزن اتوکلاو بدون زنگ زدگی، از جنس فولاد ضد زنگ و ضد مغناطیس می باشد ."}, {"num": 24, "text": "درب دستگاه اتو کلاو از جنس فولاد ضد زنگ دارای واشر نسوز سالم و قفل ایمنی می باشد."}, {"num": 25, "text": "هر دستگاه اتوکلاو دارای کارت شناسایی است و به طور منظم توسط فردی آشنا به تجهیزات اتوکلاو ثبت می شود."}, {"num": 26, "text": "فضای قرارگیری اتوکلاو از محل سایر فعالیت های بخش جدا است."}, {"num": 27, "text": "در صورت استفاده از وی پک، هر روز یک مرتبه Seal check انجام می شود."}, {"num": 28, "text": "قفسه یا کمد برای نگهداری وسایل به میزان کافی وجود دارد ."}, {"num": 29, "text": "خط مشی برای فراخوانی بسته های استریل از بخش ها در صورت بروز هرگونه اشکال در فرآیند استریلیزاسیون موجود است."}, {"num": 30, "text": "تحویل بیماران  بربالین بیمار انجام شده، شواهد آگاهی پرسنل از گزارش کلی بخش و گزارش بیمار خود وجود دارد."}]}, {"title": "ناحیه استریل", "items": [{"num": 1, "text": "پارامترهای دما، زمان و فشار در ابتدای هر سیکل برای هر اتوکلاو یادداشت یا پرینت شده نگهداری می شود."}, {"num": 2, "text": "اتوکلاو سریع (flash ) در اتاق عمل وجود دارد و فقط در مواقع اورژانسی استفاده می شود."}, {"num": 3, "text": "اندیکاتورهای موجود در پگها و ستها پس از استفاده از پگ و ست در پرونده بیماران چسبانده می شود.می شود ."}, {"num": 4, "text": "قفسه های انبار استریل فاصله مناسب از دیوار و سقف را دارند ( 30 سانتی متر از زمین 5 سانتی متر از دیوار، 45 سانتی متر از سقف)."}, {"num": 5, "text": "پس از اتمام سیکل استریلیزاسیون، قبل از انتقال بسته ها اجازه داده می شود تا خشک شوند."}, {"num": 6, "text": "قبل از نقل و انتقالات بسته های استریل دست ها شستشو می شوند."}, {"num": 7, "text": "قفسه های انبار استریل تمیز و بهداشتی است."}, {"num": 8, "text": "انبار دارای سیستم فیلتراسیون هوا با سرعت حداقل 10 بار در ساعت است."}, {"num": 9, "text": "انبار استریل دارای دماسنج و رطوبت سنج است."}, {"num": 10, "text": "انبار استریل روشنایی کافی دارد."}, {"num": 11, "text": "بسته ها به ترتیب تاریخ انقضاء قرار داده می شوند."}, {"num": 12, "text": "مدت اعتبار بسته های پارچه ای حداکثر 2 هفته و وی پک حداکثر 1 ماه است."}]}, {"title": "دستورالعمل استفاده از فور", "items": [{"num": 1, "text": "جنس بدنه و درب اتاقك فور از جنس استيل ضد زنگ بدون زنگ‌زدگي مي‌باشد."}, {"num": 2, "text": "درب دستگاه داراي واشر و الياف نسوز و عايق‌بندي بوده و داراي قفل مناسب مي‌باشد."}, {"num": 3, "text": "دستگاه فور داراي تايمر و فن جهت گردش هواي داخل محفظه، حرارت سنج بيروني و سلكتور درجه حرارت، ترموستات جهت كنترل و قطع حرارت و سيستم برق با سيم ارت مي‌باشد."}, {"num": 4, "text": "وسايل داخل فور با فاصله داخل آن قرارداده مي‌شوند (جهت تبادل حرارتي)."}, {"num": 5, "text": "حجم مواد روغني جهت استريليزاسيون حداكثر cc30 و داراي قطر حداكثر 5/2 سانتي‌متر مي‌باشد."}, {"num": 6, "text": "زمان لازم براي استريليزاسیون با فور ( َ30 براي oc180  و َ120  براي oc160 ) رعايت مي‌شود."}, {"num": 7, "text": "درب فور پس از پايان استريليزاسیون و بعد از رسيدن دماي داخل فور به oc50 باز مي‌شود."}, {"num": 8, "text": "كنترل دوره‌اي حرارت با استفاده از چند دماسنج در نقاط مختلف دستگاه انجام مي‌شود (باتوجه به دما و زمان معين اختلاف درجه‌هاي بدست آمده نبايد بيش از oc2 باشد)."}, {"num": 9, "text": "در تمامي بسته‌هاي فور از انديكارتور شيميايي كلاس 6 ويژه فور استفاده مي‌شود."}, {"num": 10, "text": "براي دستگاه شناسنامه كه نشان‌دهنده بازديد دوره‌اي صحت عملكرد و يا تعميرات احتمالي باشد وجود دارد."}]}, {"title": "دستورالعمل استفاده از پلاسما", "items": [{"num": 1, "text": "وسایل قبل از قرار دادن در دستگاه کاملا شسته و خشک می شوند."}, {"num": 2, "text": "کارتریج در یخچال نگهداری می شود."}, {"num": 3, "text": "برگ گزارش سیکل ثبت و بایگانی می شود."}, {"num": 4, "text": "استفاده مجدد از کارتریج فقط وقتی انجام می شود که دستگاه در فاز ابتدایی متوقف شده باشد."}, {"num": 5, "text": "اگر توقف در فاز ابتدایی دستگاه نباشد کارتریج تعویض می گردد."}, {"num": 6, "text": "وسایل ابتدا داخلpouch یا پارچه بافته نشده بسته بندی و سپس در دستگاه قرار می گیرند."}, {"num": 7, "text": "قبل از لمس کارتریج دستکش لاتکس یا ضد آب و عینک پوشیده می شود."}, {"num": 8, "text": "در ابتدای هر روز کاری سیکل self test برای آزمایش خودکار دستگاه انجام می شود."}, {"num": 9, "text": "بسته ها به صورت عمودی درون محفظه دستگاه قرار می گیرند."}, {"num": 10, "text": "برای بسته بندی وسایل از کاغذ مخصوص استفاده می شود."}, {"num": 11, "text": "در داخل بسته ها از اندیکاتور مخصوص استفاده می شود."}, {"num": 12, "text": "تست باکتریال هر هفته از دستگاه پلاسما انجام می شود."}, {"num": 13, "text": "از استریل کردن مایعات و روغنها در پلاسما خودداری می شود."}]}, {"title": "دستورالعمل استفاده از دستگاه اتیلن اکساید", "items": [{"num": 1, "text": "دستگاه اتیلن اکساید در CSR موجود است ودارای تهویه جداگانه می باشد."}, {"num": 2, "text": "پرسنل هنگام کار با اکسید اتیلن اکساید نکات ایمنی را رعایت می کنند. (ماسک ، گان ، دستکش دولایه ، عینک )"}, {"num": 3, "text": "جهت خروج گاز اتیلن اکساید در بالای ساختمان دودکش در 8 متری نصب شده است."}, {"num": 4, "text": "مانیتورینگ قوی جهت اندازه گیری میزان گازها در محیط کار وجود دار."}, {"num": 5, "text": "پس از خروج وسایل از دستگاه اتیلن اکساید در معرض هوا بمدت 24-8 ساعت قرار میگیرد."}, {"num": 6, "text": "آیا دستگاه اتیلن اکساید برنر یا گاز کاتالیزور جهت بی خطر نمودن مواد دارد."}, {"num": 7, "text": "آیا از تست اسپور هفتگی جهت چک دستگاه اتیلن اکساید استفاده می شود."}]}], "defaultWard": "CSR"}];
+
+    const STORAGE_KEY_EVAL = 'icu_eval_current_v1';
+    const STORAGE_KEY_HISTORY = 'icu_eval_history_v1';
+    const STORAGE_KEY_CONFIG = 'icu_eval_config_v2';
+
+    const DEFAULT_CONFIG = {
+      hospitalName: 'بیمارستان تخصصی و فوق تخصصی خانواده نزاجا',
+      formTitle: 'چک لیست ارزیابی بخش ICU توسط سوپروایزران',
+      docCode: 'MC-CL-006',
+      editionInfo: 'تاریخ تهیه: 1403/09 | ویرایش: چهارم | تاریخ ابلاغ: 1404/09 | تاریخ ویرایش بعدی: 1405/09',
+      primaryColor: '#0f766e',
+      fontSize: '15px',
+      darkMode: false,
+      logoDataUrl: '',
+      adminPin: '3312',
+      managerPhone: '',
+      lists: {"wards": ["ICU I", "ICU II", "NICU", "اورژانس", "دیالیز", "جراحی زنان", "جراحی مردان", "داخلی زنان", "داخلی مردان", "بلوک زایمان", "اتاق عمل", "CSR"], "supervisors": ["حمیده ارتقایی", "ابراهیم منصوری", "خدیجه سلطانی", "مصطفی دهگلی", "موسی قربانی", "نجمه میر", "کاظم نقی لو", "رضا اسلامی", "اعظم محمدپور", "فاطمه رنجبر"], "headNurses": ["جلیل نوروزی", "سارا لشگری", "معصومه جوادی", "زهرا راشکی", "سمانه ولی عابدی", "بهناز جوادی", "سعید منصوری", "فاطمه ظاهری", "علیرضا برجی", "الهه ربیعی", "جواد یعقوبی", "نگین حقایق"], "shifts": ["صبح", "عصر", "شب"]}
+    };
+
+    let state = {
+      meta: { formId: 'icu_supervisor', ward: 'ICU I', supervisor: '', headNurse: '', date: '', shift: 'صبح' },
+      answers: {},   // key: "cIdx_iIdx" -> 2 | 1 | 0 | "NA"
+      notes: {},     // key: "cIdx_iIdx" -> string
+      correctiveActions: '',
+      activeTab: 'form',
+      activeChapter: 'all', // 'all' or chapter index
+      filterMode: 'all',    // 'all' | 'unanswered' | 'low'
+      searchQuery: ''
+    };
+
+    function getActiveForm() {
+      return FORMS_CATALOG.find(f => f.id === state.meta.formId) || FORMS_CATALOG[0];
+    }
+
+    function ansKey(cIdx, iIdx) {
+      return `${getActiveForm().id}__${cIdx}_${iIdx}`;
+    }
+
+
+
+    let config = { ...DEFAULT_CONFIG };
+    let historyList = [];
+    let isAdmin = false;
+    let lastSavedRecord = null;
+    let chartInstance = null;
+    let confirmCallback = null;
+
+    function safeGetStorage(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch (e) {
+        return fallback;
+      }
+    }
+
+    function safeSetStorage(key, val) {
+      try {
+        localStorage.setItem(key, JSON.stringify(val));
+      } catch (e) {}
+    }
+
+    function toPersianDigits(str) {
+      const digits = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+      return String(str).replace(/\d/g, d => digits[Number(d)]);
+    }
+
+    function toEnglishDigits(str) {
+      const fa = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+      const ar = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+      return String(str)
+        .replace(/[۰-۹]/g, d => String(fa.indexOf(d)))
+        .replace(/[٠-٩]/g, d => String(ar.indexOf(d)));
+    }
+
+    function showToast(msg, type = 'info') {
+      const wrap = document.getElementById('toastContainer');
+      const div = document.createElement('div');
+      const bg = type === 'error' ? 'bg-rose-600' : type === 'success' ? 'bg-emerald-600' : 'bg-slate-800';
+      div.className = `${bg} text-white px-4 py-3 rounded-xl shadow-lg text-xs sm:text-sm font-medium pointer-events-auto transition-opacity`;
+      div.textContent = msg;
+      wrap.appendChild(div);
+      setTimeout(() => {
+        div.style.opacity = '0';
+        setTimeout(() => div.remove(), 300);
+      }, 2800);
+    }
+
+    function openConfirm(title, msg, onOk) {
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmMessage').textContent = msg;
+      confirmCallback = onOk;
+      const modal = document.getElementById('confirmModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeConfirm() {
+      const modal = document.getElementById('confirmModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      confirmCallback = null;
+    }
+
+    function getStatusInfo(pct) {
+      if (pct <= 50) return { label: 'نیازمند بهبود', cls: 'bg-rose-100 text-rose-700' };
+      if (pct <= 75) return { label: 'متوسط', cls: 'bg-amber-100 text-amber-700' };
+      if (pct <= 90) return { label: 'خوب', cls: 'bg-sky-100 text-sky-700' };
+      return { label: 'عالی', cls: 'bg-emerald-100 text-emerald-700' };
+    }
+
+    function computeStats() {
+      let totalQuestions = 0;
+      let totalAnswered = 0;
+      let totalNa = 0;
+      let totalScore = 0;
+      let totalMax = 0;
+      let totalDeficient = 0;
+
+      const chaptersStats = getActiveForm().chapters.map((ch, cIdx) => {
+        let qCount = ch.items.length;
+        let naCount = 0;
+        let answered = 0;
+        let score = 0;
+        let deficient = 0;
+
+        ch.items.forEach((_, iIdx) => {
+          const val = state.answers[ansKey(cIdx, iIdx)];
+          if (val !== undefined) {
+            answered++;
+            if (val === 'NA') {
+              naCount++;
+            } else {
+              const num = Number(val);
+              score += num;
+              if (num === 0 || num === 1) deficient++;
+            }
+          }
+        });
+
+        const maxScore = (qCount - naCount) * 2;
+        const pct = maxScore > 0 ? (score / maxScore) * 100 : 0;
+        totalQuestions += qCount;
+        totalAnswered += answered;
+        totalNa += naCount;
+        totalScore += score;
+        totalMax += maxScore;
+        totalDeficient += deficient;
+
+        return {
+          cIdx,
+          title: ch.title,
+          qCount,
+          naCount,
+          answered,
+          score,
+          maxScore,
+          pct: Number(pct.toFixed(1)),
+          status: getStatusInfo(pct)
+        };
+      });
+
+      const totalPct = totalMax > 0 ? Number(((totalScore / totalMax) * 100).toFixed(1)) : 0;
+      return {
+        totalQuestions,
+        totalAnswered,
+        totalNa,
+        totalScore,
+        totalMax,
+        totalDeficient,
+        totalPct,
+        totalStatus: getStatusInfo(totalPct),
+        chaptersStats
+      };
+    }
+
+    function applyConfig() {
+      const root = document.documentElement;
+      root.style.setProperty('--primary', config.primaryColor);
+      root.style.setProperty('--primary-dark', config.primaryColor);
+      root.style.setProperty('--base-font-size', config.fontSize);
+
+      document.body.classList.toggle('dark-mode', Boolean(config.darkMode));
+
+      document.getElementById('hdrHospitalName').textContent = config.hospitalName;
+      document.getElementById('hdrFormTitle').textContent = config.formTitle;
+      document.getElementById('metaDocCodeBadge').textContent = `کد سند: ${config.docCode}`;
+
+      document.getElementById('printHospitalName').textContent = config.hospitalName;
+      document.getElementById('printFormTitle').textContent = config.formTitle;
+      document.getElementById('printDocCode').textContent = `کد سند: ${config.docCode}`;
+      document.getElementById('printEditionInfo').textContent = config.editionInfo;
+
+      const hdrImg = document.getElementById('headerLogoImg');
+      const hdrIcon = document.getElementById('headerDefaultIcon');
+      const prtImg = document.getElementById('printLogoImg');
+      const remBtn = document.getElementById('removeLogoBtn');
+
+      if (config.logoDataUrl) {
+        hdrImg.src = config.logoDataUrl;
+        hdrImg.classList.remove('hidden');
+        hdrIcon.classList.add('hidden');
+        prtImg.src = config.logoDataUrl;
+        prtImg.classList.remove('hidden');
+        remBtn.classList.remove('hidden');
+      } else {
+        hdrImg.classList.add('hidden');
+        hdrIcon.classList.remove('hidden');
+        prtImg.classList.add('hidden');
+        remBtn.classList.add('hidden');
+      }
+
+      document.getElementById('cfgHospitalName').value = config.hospitalName;
+      document.getElementById('cfgFormTitle').value = config.formTitle;
+      document.getElementById('cfgDocCode').value = config.docCode;
+      document.getElementById('cfgEditionInfo').value = config.editionInfo;
+      document.getElementById('cfgCustomColor').value = config.primaryColor;
+
+      document.querySelectorAll('.font-size-btn').forEach(btn => {
+        const active = btn.dataset.fontsize === config.fontSize;
+        btn.classList.toggle('btn-primary', active);
+      });
+
+      const lists = config.lists || DEFAULT_CONFIG.lists;
+      document.getElementById('cfgListWards').value = (lists.wards || []).join('\n');
+      document.getElementById('cfgListSupervisors').value = (lists.supervisors || []).join('\n');
+      document.getElementById('cfgListHeadNurses').value = (lists.headNurses || []).join('\n');
+      document.getElementById('cfgListShifts').value = (lists.shifts || []).join('\n');
+      document.getElementById('cfgAdminPin').value = config.adminPin || '3312';
+      document.getElementById('cfgManagerPhone').value = config.managerPhone || '';
+      refreshAllSearchableLabels();
+      updateAdminUI();
+    }
+
+    function updateHeaderAndStats() {
+      const stats = computeStats();
+      document.getElementById('livePctBadge').textContent = toPersianDigits(stats.totalPct) + '%';
+      const stBadge = document.getElementById('liveStatusText');
+      if (stats.totalAnswered === 0) {
+        stBadge.textContent = 'تکمیل نشده';
+        stBadge.className = 'text-[11px] font-medium px-1.5 py-0.5 rounded bg-slate-200 text-slate-700';
+      } else {
+        stBadge.textContent = stats.totalStatus.label;
+        stBadge.className = `text-[11px] font-semibold px-1.5 py-0.5 rounded ${stats.totalStatus.cls}`;
+      }
+
+      const progressPct = Math.round((stats.totalAnswered / stats.totalQuestions) * 100);
+      document.getElementById('progressBarFill').style.width = `${progressPct}%`;
+      const activeForm = getActiveForm();
+      document.getElementById('hdrFormTitle').textContent = activeForm.title;
+      document.getElementById('metaDocCodeBadge').textContent = `کد سند: ${activeForm.docCode}`;
+      document.getElementById('printFormTitle').textContent = activeForm.title;
+      document.getElementById('printDocCode').textContent = `کد سند: ${activeForm.docCode}`;
+      const allFilterBtn = document.querySelector('.filter-btn[data-filter="all"]');
+      if (allFilterBtn) allFilterBtn.textContent = `همه (${toPersianDigits(stats.totalQuestions)})`;
+      document.getElementById('progressCountText').textContent = `${toPersianDigits(stats.totalAnswered)} از ${toPersianDigits(stats.totalQuestions)} مورد`;
+
+      // Update Dashboard KPIs
+      document.getElementById('kpiTotalPct').textContent = toPersianDigits(stats.totalPct) + '%';
+      document.getElementById('kpiTotalStatus').textContent = stats.totalAnswered ? stats.totalStatus.label : 'ارزیابی آغاز نشده';
+      document.getElementById('kpiScoreSum').textContent = toPersianDigits(stats.totalScore);
+      document.getElementById('kpiMaxScore').textContent = `از حداکثر ${toPersianDigits(stats.totalMax)}`;
+      document.getElementById('kpiNaCount').textContent = toPersianDigits(stats.totalNa);
+      const qSubEl = document.getElementById('kpiTotalQuestionsSub');
+      if (qSubEl) qSubEl.textContent = `از ${toPersianDigits(stats.totalQuestions)} سنجه`;
+      document.getElementById('kpiDeficientCount').textContent = toPersianDigits(stats.totalDeficient);
+
+      renderSummaryTable(stats);
+      if (state.activeTab === 'dashboard') {
+        renderChart(stats);
+      }
+      safeSetStorage(STORAGE_KEY_EVAL, state);
+    }
+
+    function renderChapterPills() {
+      const wrap = document.getElementById('chapterPills');
+      const stats = computeStats();
+      const chList = getActiveForm().chapters;
+      let html = `<button type="button" data-ch="all" class="ch-pill px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap border transition ${state.activeChapter === 'all' ? 'btn-primary border-transparent' : ''}">همه فصل‌ها (${toPersianDigits(chList.length)})</button>`;
+      getActiveForm().chapters.forEach((ch, idx) => {
+        const st = stats.chaptersStats[idx];
+        const active = String(state.activeChapter) === String(idx);
+        html += `<button type="button" data-ch="${idx}" class="ch-pill px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap border transition ${active ? 'btn-primary border-transparent' : ''}">${toPersianDigits(idx + 1)}. ${ch.title.replace('ارزیابی عملکرد پرستاری در ', '').replace('ارزیابی عملکرد پرستاری  در', '').replace('ارزیابی ', '')} (${toPersianDigits(st.answered)}/${toPersianDigits(st.qCount)})</button>`;
+      });
+      wrap.innerHTML = html;
+    }
+
+    function renderQuestions() {
+      const container = document.getElementById('questionsContainer');
+      const q = state.searchQuery.trim().toLowerCase();
+      let html = '';
+      let renderedCount = 0;
+
+      getActiveForm().chapters.forEach((ch, cIdx) => {
+        if (state.activeChapter !== 'all' && Number(state.activeChapter) !== cIdx) return;
+
+        const filteredItems = ch.items.map((item, iIdx) => ({ ...item, iIdx })).filter(item => {
+          const key = ansKey(cIdx, item.iIdx);
+          const ans = state.answers[key];
+          if (state.filterMode === 'unanswered' && ans !== undefined) return false;
+          if (state.filterMode === 'low' && ans !== 0 && ans !== 1) return false;
+          if (q && !item.text.toLowerCase().includes(q) && !ch.title.toLowerCase().includes(q)) return false;
+          return true;
+        });
+
+        if (filteredItems.length === 0) return;
+        renderedCount += filteredItems.length;
+
+        html += `
+          <div class="card-surface border rounded-2xl overflow-hidden shadow-sm">
+            <div class="px-4 py-3 border-b flex items-center justify-between gap-2" style="background-color: var(--primary-light);">
+              <h3 class="text-sm sm:text-base font-bold" style="color: #0f172a;">${toPersianDigits(cIdx + 1)}. ${ch.title}</h3>
+              <span class="text-xs font-bold px-2 py-0.5 rounded-lg bg-white/80 text-slate-800 shrink-0">${toPersianDigits(filteredItems.length)} مورد</span>
+            </div>
+            <div class="divide-y" style="border-color: var(--border-color);">
+        `;
+
+        filteredItems.forEach(item => {
+          const key = ansKey(cIdx, item.iIdx);
+          const ans = state.answers[key];
+          const note = state.notes[key] || '';
+
+          const btnCls = (target, activeStyle) =>
+            ans === target
+              ? `${activeStyle} ring-2 ring-offset-1 font-bold`
+              : `border hover:bg-slate-100 dark:hover:bg-slate-800 text-muted`;
+
+          html += `
+            <div class="p-3.5 sm:p-4 space-y-3">
+              <div class="flex items-start gap-2.5">
+                <span class="w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center shrink-0 mt-0.5 bg-slate-100 dark:bg-slate-800">${toPersianDigits(item.num)}</span>
+                <p class="text-sm leading-relaxed flex-1">${item.text}</p>
+              </div>
+              <div class="grid grid-cols-4 gap-2">
+                <button type="button" data-key="${key}" data-val="2" class="ans-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm transition ${btnCls(2, 'bg-emerald-600 text-white ring-emerald-500')}">۲ (کامل)</button>
+                <button type="button" data-key="${key}" data-val="1" class="ans-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm transition ${btnCls(1, 'bg-amber-500 text-white ring-amber-400')}">۱ (ناقص)</button>
+                <button type="button" data-key="${key}" data-val="0" class="ans-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm transition ${btnCls(0, 'bg-rose-600 text-white ring-rose-500')}">۰ (خیر)</button>
+                <button type="button" data-key="${key}" data-val="NA" class="ans-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm transition ${btnCls('NA', 'bg-slate-600 text-white ring-slate-500')}">NA (غ ق ا)</button>
+              </div>
+              <div>
+                <input type="text" data-notekey="${key}" value="${note.replace(/"/g, '&quot;')}" placeholder="یادداشت / علت نقص (اختیاری)..." class="note-input w-full px-3 py-1.5 rounded-xl border bg-transparent text-xs focus:outline-none" />
+              </div>
+            </div>
+          `;
+        });
+
+        html += `</div></div>`;
+      });
+
+      if (renderedCount === 0) {
+        html = `<div class="card-surface border rounded-2xl p-8 text-center text-sm text-muted">موردی با فیلتر یا جستجوی فعلی یافت نشد.</div>`;
+      }
+
+      container.innerHTML = html;
+
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        const active = btn.dataset.filter === state.filterMode;
+        btn.classList.toggle('btn-primary', active);
+        btn.classList.toggle('border-transparent', active);
+      });
+    }
+
+    function renderSummaryTable(stats) {
+      const tbody = document.getElementById('summaryTableBody');
+      let rows = '';
+      stats.chaptersStats.forEach((st, idx) => {
+        const barColor = st.pct > 90 ? '#059669' : st.pct > 75 ? '#0284c7' : st.pct > 50 ? '#d97706' : '#e11d48';
+        const stripeCls = idx % 2 === 1 ? 'bg-slate-50/70 dark:bg-slate-800/30' : '';
+        rows += `
+          <tr class="${stripeCls} hover:bg-teal-50/40 dark:hover:bg-slate-800/60 transition">
+            <td class="py-2.5 px-3 text-center font-bold text-muted">${toPersianDigits(idx + 1)}</td>
+            <td class="py-2.5 px-3 font-semibold">${st.title}</td>
+            <td class="py-2.5 px-3 text-center">${toPersianDigits(st.qCount)}</td>
+            <td class="py-2.5 px-3 text-center text-muted">${toPersianDigits(st.naCount)}</td>
+            <td class="py-2.5 px-3 text-center font-bold">${toPersianDigits(st.score)}</td>
+            <td class="py-2.5 px-3 text-center text-muted">${toPersianDigits(st.maxScore)}</td>
+            <td class="py-2.5 px-3">
+              <div class="flex items-center gap-2 justify-center">
+                <div class="w-16 h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0">
+                  <div class="h-full rounded-full" style="width:${st.pct}%; background-color:${barColor};"></div>
+                </div>
+                <span class="font-extrabold text-xs w-11 text-left">${toPersianDigits(st.pct)}%</span>
+              </div>
+            </td>
+            <td class="py-2.5 px-3 text-center"><span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${st.status.cls}">${st.status.label}</span></td>
+          </tr>
+        `;
+      });
+      rows += `
+        <tr class="font-extrabold bg-slate-100 dark:bg-slate-800 border-t-2" style="border-color: var(--primary);">
+          <td class="py-3 px-3" colspan="2">جمع کل ارزیابی بخش</td>
+          <td class="py-3 px-3 text-center">${toPersianDigits(stats.totalQuestions)}</td>
+          <td class="py-3 px-3 text-center">${toPersianDigits(stats.totalNa)}</td>
+          <td class="py-3 px-3 text-center">${toPersianDigits(stats.totalScore)}</td>
+          <td class="py-3 px-3 text-center">${toPersianDigits(stats.totalMax)}</td>
+          <td class="py-3 px-3 text-center text-base" style="color: var(--primary);">${toPersianDigits(stats.totalPct)}%</td>
+          <td class="py-3 px-3 text-center"><span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs ${stats.totalStatus.cls}">${stats.totalStatus.label}</span></td>
+        </tr>
+      `;
+      tbody.innerHTML = rows;
+    }
+
+    function renderChart(stats) {
+      const canvas = document.getElementById('chaptersChart');
+      if (!canvas || typeof Chart === 'undefined') return;
+      const labels = stats.chaptersStats.map((s, i) => `فصل ${toPersianDigits(i + 1)}`);
+      const data = stats.chaptersStats.map(s => s.pct);
+      const colors = data.map(v => v > 90 ? '#059669' : v > 75 ? '#0284c7' : v > 50 ? '#d97706' : '#e11d48');
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+      chartInstance = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'درصد عملکرد فصل',
+            data,
+            backgroundColor: colors,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, max: 100, ticks: { callback: val => val + '%' } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => stats.chaptersStats[items[0].dataIndex].title,
+                label: (item) => `عملکرد: ${item.raw}%`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function switchTab(tabName) {
+      state.activeTab = tabName;
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+      document.querySelectorAll('.nav-tab').forEach(btn => {
+        const active = btn.dataset.tab === tabName;
+        btn.classList.toggle('btn-primary', active);
+        if (!active) btn.classList.add('border');
+        else btn.classList.remove('border');
+      });
+
+      if (tabName === 'dashboard') {
+        renderChart(computeStats());
+      } else if (tabName === 'history') {
+        renderHistory();
+      }
+    }
+
+    function prepareAndPrint() {
+      const stats = computeStats();
+      document.getElementById('pWard').textContent = state.meta.ward || '—';
+      document.getElementById('pSupervisor').textContent = state.meta.supervisor || '—';
+      document.getElementById('pHeadNurse').textContent = state.meta.headNurse || '—';
+      document.getElementById('pDate').textContent = state.meta.date || '—';
+      document.getElementById('pShift').textContent = state.meta.shift || '—';
+      document.getElementById('pCorrective').textContent = state.correctiveActions || 'موردی ثبت نشده است.';
+
+      let pRows = '';
+      stats.chaptersStats.forEach((st, idx) => {
+        pRows += `
+          <tr>
+            <td class="border border-black p-1 text-center">${toPersianDigits(idx + 1)}</td>
+            <td class="border border-black p-1">${st.title}</td>
+            <td class="border border-black p-1 text-center">${toPersianDigits(st.qCount)}</td>
+            <td class="border border-black p-1 text-center">${toPersianDigits(st.naCount)}</td>
+            <td class="border border-black p-1 text-center">${toPersianDigits(st.score)}</td>
+            <td class="border border-black p-1 text-center">${toPersianDigits(st.maxScore)}</td>
+            <td class="border border-black p-1 text-center">${toPersianDigits(st.pct)}%</td>
+            <td class="border border-black p-1 text-center">${st.status.label}</td>
+          </tr>
+        `;
+      });
+      pRows += `
+        <tr class="font-bold bg-gray-100">
+          <td class="border border-black p-1" colspan="2">جمع کل</td>
+          <td class="border border-black p-1 text-center">${toPersianDigits(stats.totalQuestions)}</td>
+          <td class="border border-black p-1 text-center">${toPersianDigits(stats.totalNa)}</td>
+          <td class="border border-black p-1 text-center">${toPersianDigits(stats.totalScore)}</td>
+          <td class="border border-black p-1 text-center">${toPersianDigits(stats.totalMax)}</td>
+          <td class="border border-black p-1 text-center">${toPersianDigits(stats.totalPct)}%</td>
+          <td class="border border-black p-1 text-center">${stats.totalStatus.label}</td>
+        </tr>
+      `;
+      document.getElementById('printSummaryBody').innerHTML = pRows;
+
+      const defUl = document.getElementById('pDeficientList');
+      const defWrap = document.getElementById('pDeficientListWrap');
+      let defHtml = '';
+      getActiveForm().chapters.forEach((ch, cIdx) => {
+        ch.items.forEach((it, iIdx) => {
+          const key = ansKey(cIdx, iIdx);
+          const val = state.answers[key];
+          const note = state.notes[key];
+          if (val === 0 || val === 1 || (note && note.trim())) {
+            const scoreLbl = val !== undefined ? `(امتیاز: ${val})` : '';
+            const noteLbl = note ? ` — یادداشت: ${note}` : '';
+            defHtml += `<li><strong>${ch.title}:</strong> ${it.text} ${scoreLbl}${noteLbl}</li>`;
+          }
+        });
+      });
+      if (defHtml) {
+        defUl.innerHTML = defHtml;
+        defWrap.classList.remove('hidden');
+      } else {
+        defWrap.classList.add('hidden');
+      }
+
+      window.print();
+    }
+
+    function exportCSV() {
+      const stats = computeStats();
+      const lines = [
+        ['بخش', state.meta.ward, 'سوپروایزر', state.meta.supervisor, 'سرپرستار', state.meta.headNurse, 'تاریخ', state.meta.date, 'شیفت', state.meta.shift],
+        [],
+        ['فصل', 'شماره سوال', 'متن سنجه', 'امتیاز', 'یادداشت'],
+      ];
+      getActiveForm().chapters.forEach((ch, cIdx) => {
+        ch.items.forEach((it, iIdx) => {
+          const key = ansKey(cIdx, iIdx);
+          const val = state.answers[key] !== undefined ? state.answers[key] : '';
+          const note = state.notes[key] || '';
+          lines.push([ch.title, it.num, it.text, val, note]);
+        });
+      });
+      lines.push([]);
+      lines.push(['جمع امتیاز', stats.totalScore, 'حداکثر امتیاز', stats.totalMax, 'درصد کل', stats.totalPct + '%', 'وضعیت', stats.totalStatus.label]);
+      lines.push(['اقدامات اصلاحی', state.correctiveActions]);
+
+      const csv = '\uFEFF' + lines.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `arziyabi_${state.meta.ward || 'ward'}_${state.meta.date || 'export'}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('فایل CSV سازگار با اکسل دانلود شد.', 'success');
+    }
+
+    function updateAdminUI() {
+      const btn = document.getElementById('adminToggleBtn');
+      const themeTab = document.getElementById('navTabTheme');
+      if (isAdmin) {
+        btn.textContent = '🔓 حالت مدیر (خروج)';
+        btn.classList.add('btn-primary');
+        themeTab.classList.remove('hidden');
+      } else {
+        btn.textContent = '🔐 ورود مدیر';
+        btn.classList.remove('btn-primary');
+        themeTab.classList.add('hidden');
+        if (state.activeTab === 'theme') switchTab('form');
+      }
+      renderHistory();
+    }
+
+    function buildRecordPayload() {
+      const stats = computeStats();
+      return {
+        id: Date.now(),
+        savedAt: new Date().toLocaleString('fa-IR'),
+        meta: { ...state.meta },
+        answers: { ...state.answers },
+        notes: { ...state.notes },
+        correctiveActions: state.correctiveActions,
+        summary: {
+          totalPct: stats.totalPct,
+          totalScore: stats.totalScore,
+          totalMax: stats.totalMax,
+          status: stats.totalStatus.label
+        }
+      };
+    }
+
+    function downloadRecordJson(record) {
+      const payload = { state: { meta: record.meta, answers: record.answers, notes: record.notes, correctiveActions: record.correctiveActions }, historyList: [record], config };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const fname = `arziyabi_${record.meta.ward || 'ward'}_${record.meta.date || 'new'}.json`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fname;
+      a.click();
+      URL.revokeObjectURL(url);
+      return { blob, fname };
+    }
+
+    async function shareRecordToManager(record) {
+      const payload = { state: { meta: record.meta, answers: record.answers, notes: record.notes, correctiveActions: record.correctiveActions }, historyList: [record], config };
+      const fname = `arziyabi_${record.meta.ward || 'ward'}_${record.meta.date || 'new'}.json`;
+      const file = new File([JSON.stringify(payload, null, 2)], fname, { type: 'application/json' });
+      try {
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: `ارزیابی بخش ${record.meta.ward || ''}`,
+            text: `نتیجه ارزیابی بخش ${record.meta.ward || ''} - امتیاز: ${record.summary.totalPct}%`,
+            files: [file]
+          });
+          showToast('فایل آماده ارسال شد.', 'success');
+          return;
+        }
+      } catch (e) {}
+      downloadRecordJson(record);
+      showToast('فایل JSON دانلود شد؛ آن را در پیام‌رسان برای مدیر بفرستید.', 'info');
+    }
+
+    function saveToHistory() {
+      const record = buildRecordPayload();
+      lastSavedRecord = record;
+      historyList.unshift(record);
+      safeSetStorage(STORAGE_KEY_HISTORY, historyList);
+      renderHistory();
+      const modal = document.getElementById('sendModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function renderHistory() {
+      const wrap = document.getElementById('historyList');
+      document.getElementById('historyCountBadge').textContent = `${toPersianDigits(historyList.length)} مورد`;
+      if (historyList.length === 0) {
+        wrap.innerHTML = '<div class="text-sm text-muted py-4 text-center">هنوز ارزیابی‌ای در سوابق ذخیره نشده است.</div>';
+        return;
+      }
+      wrap.innerHTML = historyList.map(rec => `
+        <div class="border rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <div class="font-bold text-sm">${rec.meta.ward || 'بخش نامشخص'} — ${rec.meta.date || 'بدون تاریخ'} (شیفت ${rec.meta.shift})</div>
+            <div class="text-xs text-muted mt-0.5">سوپروایزر: ${rec.meta.supervisor || '—'} | امتیاز: ${toPersianDigits(rec.summary.totalPct)}% (${rec.summary.status})</div>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" data-loadid="${rec.id}" class="load-hist-btn px-3 py-1.5 rounded-lg border text-xs font-semibold hover:opacity-80">بارگذاری در فرم</button>
+            ${isAdmin ? `<button type="button" data-delid="${rec.id}" class="del-hist-btn px-3 py-1.5 rounded-lg border border-rose-200 text-rose-600 text-xs font-semibold hover:bg-rose-50">حذف</button>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function getDropdownItems(field) {
+      const lists = config.lists || DEFAULT_CONFIG.lists;
+      if (field === 'formId') return FORMS_CATALOG.map(f => ({ value: f.id, label: f.title }));
+      if (field === 'ward') return (lists.wards || []).map(x => ({ value: x, label: x }));
+      if (field === 'supervisor') return (lists.supervisors || []).map(x => ({ value: x, label: x }));
+      if (field === 'headNurse') return (lists.headNurses || []).map(x => ({ value: x, label: x }));
+      if (field === 'shift') return (lists.shifts || []).map(x => ({ value: x, label: x }));
+      return [];
+    }
+
+    function refreshAllSearchableLabels() {
+      document.querySelectorAll('.searchable-wrap').forEach(wrap => {
+        const field = wrap.dataset.field;
+        const val = state.meta[field];
+        const items = getDropdownItems(field);
+        const found = items.find(i => i.value === val);
+        const lbl = wrap.querySelector('.ss-label');
+        if (found) {
+          lbl.textContent = found.label;
+        } else if (val) {
+          lbl.textContent = val;
+        } else {
+          lbl.textContent = 'انتخاب کنید...';
+        }
+      });
+    }
+
+    function renderDropdownOptions(wrap, query = '') {
+      const field = wrap.dataset.field;
+      const items = getDropdownItems(field);
+      const q = query.trim().toLowerCase();
+      const filtered = q ? items.filter(i => i.label.toLowerCase().includes(q)) : items;
+      const optsWrap = wrap.querySelector('.ss-options');
+      if (filtered.length === 0) {
+        optsWrap.innerHTML = '<div class="px-2.5 py-2 text-xs text-muted text-center">موردی یافت نشد</div>';
+        return;
+      }
+      optsWrap.innerHTML = filtered.map(item => {
+        const selected = state.meta[field] === item.value;
+        return `<button type="button" data-val="${item.value.replace(/"/g, '&quot;')}" class="ss-opt w-full text-right px-2.5 py-1.5 rounded-lg text-xs sm:text-sm transition ${selected ? 'btn-primary font-bold' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}">${item.label}</button>`;
+      }).join('');
+    }
+
+    function initSearchableDropdowns() {
+      document.querySelectorAll('.searchable-wrap').forEach(wrap => {
+        const trigger = wrap.querySelector('.ss-trigger');
+        const dropdown = wrap.querySelector('.ss-dropdown');
+        const search = wrap.querySelector('.ss-search');
+        const optsWrap = wrap.querySelector('.ss-options');
+
+        trigger.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const wasHidden = dropdown.classList.contains('hidden');
+          document.querySelectorAll('.ss-dropdown').forEach(d => d.classList.add('hidden'));
+          if (wasHidden) {
+            search.value = '';
+            renderDropdownOptions(wrap, '');
+            dropdown.classList.remove('hidden');
+            if (window.innerWidth >= 768) search.focus();
+          }
+        });
+
+        search.addEventListener('input', () => {
+          renderDropdownOptions(wrap, search.value);
+        });
+
+        search.addEventListener('click', (e) => e.stopPropagation());
+
+        optsWrap.addEventListener('click', (e) => {
+          const optBtn = e.target.closest('.ss-opt');
+          if (!optBtn) return;
+          const field = wrap.dataset.field;
+          state.meta[field] = optBtn.dataset.val;
+          dropdown.classList.add('hidden');
+          if (field === 'formId') {
+            const f = getActiveForm();
+            if (f.defaultWard) state.meta.ward = f.defaultWard;
+            state.activeChapter = 'all';
+            renderChapterPills();
+            renderQuestions();
+            updateHeaderAndStats();
+          }
+          refreshAllSearchableLabels();
+          safeSetStorage(STORAGE_KEY_EVAL, state);
+        });
+      });
+
+      document.addEventListener('click', () => {
+        document.querySelectorAll('.ss-dropdown').forEach(d => d.classList.add('hidden'));
+      });
+    }
+
+    function bindEvents() {
+      // Tabs
+      document.querySelectorAll('.nav-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+      });
+
+      // Manual Date input
+      const dateEl = document.getElementById('evalDate');
+      dateEl.value = state.meta.date || '';
+      dateEl.addEventListener('input', () => {
+        state.meta.date = dateEl.value;
+        safeSetStorage(STORAGE_KEY_EVAL, state);
+      });
+
+      // Searchable dropdowns
+      initSearchableDropdowns();
+
+      // Save Lists & Admin PIN button
+      document.getElementById('saveListsBtn').addEventListener('click', () => {
+        const parseLines = id => document.getElementById(id).value.split('\n').map(x => x.trim()).filter(Boolean);
+        config.lists = {
+          wards: parseLines('cfgListWards'),
+          supervisors: parseLines('cfgListSupervisors'),
+          headNurses: parseLines('cfgListHeadNurses'),
+          shifts: parseLines('cfgListShifts')
+        };
+        const newPin = document.getElementById('cfgAdminPin').value.trim();
+        if (newPin) config.adminPin = newPin;
+        config.managerPhone = document.getElementById('cfgManagerPhone').value.trim();
+        safeSetStorage(STORAGE_KEY_CONFIG, config);
+        refreshAllSearchableLabels();
+        showToast('تنظیمات و لیست‌های مدیر ذخیره شدند.', 'success');
+      });
+
+      // Admin Login modal handlers
+      document.getElementById('adminToggleBtn').addEventListener('click', () => {
+        if (isAdmin) {
+          isAdmin = false;
+          updateAdminUI();
+          showToast('از حالت مدیر خارج شدید.', 'info');
+        } else {
+          document.getElementById('adminPinInput').value = '';
+          document.getElementById('adminPinError').classList.add('hidden');
+          const m = document.getElementById('adminModal');
+          m.classList.remove('hidden');
+          m.classList.add('flex');
+          document.getElementById('adminPinInput').focus();
+        }
+      });
+
+      document.getElementById('adminCancelBtn').addEventListener('click', () => {
+        const m = document.getElementById('adminModal');
+        m.classList.add('hidden');
+        m.classList.remove('flex');
+      });
+
+      const submitAdminLogin = () => {
+        const entered = toEnglishDigits(document.getElementById('adminPinInput').value.trim());
+        const expected = toEnglishDigits((config.adminPin || '3312').trim());
+        if (entered === expected) {
+          isAdmin = true;
+          const m = document.getElementById('adminModal');
+          m.classList.add('hidden');
+          m.classList.remove('flex');
+          updateAdminUI();
+          showToast('حالت مدیر فعال شد.', 'success');
+        } else {
+          document.getElementById('adminPinError').classList.remove('hidden');
+        }
+      };
+      document.getElementById('adminSubmitBtn').addEventListener('click', submitAdminLogin);
+      document.getElementById('adminPinInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') submitAdminLogin();
+      });
+
+      // Send Modal handlers
+      const closeSendModal = () => {
+        const m = document.getElementById('sendModal');
+        m.classList.add('hidden');
+        m.classList.remove('flex');
+      };
+      document.getElementById('sendModalCloseBtn').addEventListener('click', closeSendModal);
+      document.getElementById('nativeShareJsonBtn').addEventListener('click', () => {
+        if (lastSavedRecord) shareRecordToManager(lastSavedRecord);
+      });
+      document.getElementById('copySummaryBtn').addEventListener('click', async () => {
+        if (!lastSavedRecord) return;
+        const r = lastSavedRecord;
+        const stats = computeStats();
+        const text = [
+          `گزارش ارزیابی بخش: ${r.meta.ward || '—'}`,
+          `فرم: ${getActiveForm().title}`,
+          `تاریخ: ${r.meta.date || '—'} | شیفت: ${r.meta.shift || '—'}`,
+          `سوپروایزر: ${r.meta.supervisor || '—'} | سرپرستار: ${r.meta.headNurse || '—'}`,
+          `امتیاز کل: ${r.summary.totalPct}% (${r.summary.status})`,
+          `موارد نیازمند اصلاح: ${stats.totalDeficient}`,
+          r.correctiveActions ? `اقدامات اصلاحی: ${r.correctiveActions}` : ''
+        ].filter(Boolean).join('\n');
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            throw new Error('fallback');
+          }
+        } catch (err) {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+        }
+        showToast('خلاصه گزارش کپی شد؛ در بله Paste کنید.', 'success');
+      });
+
+      document.getElementById('downloadOnlyJsonBtn').addEventListener('click', () => {
+        if (lastSavedRecord) {
+          downloadRecordJson(lastSavedRecord);
+          showToast('فایل JSON دانلود شد.', 'success');
+        }
+      });
+      document.getElementById('downloadCsvFromModalBtn').addEventListener('click', () => {
+        exportCSV();
+      });
+      document.getElementById('printFromModalBtn').addEventListener('click', () => {
+        closeSendModal();
+        prepareAndPrint();
+      });
+
+      const corrEl = document.getElementById('correctiveActions');
+      corrEl.value = state.correctiveActions || '';
+      corrEl.addEventListener('input', () => {
+        state.correctiveActions = corrEl.value;
+        safeSetStorage(STORAGE_KEY_EVAL, state);
+      });
+
+      // Filters & Search
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.filterMode = btn.dataset.filter;
+          renderQuestions();
+        });
+      });
+
+      document.getElementById('searchInput').addEventListener('input', (e) => {
+        state.searchQuery = e.target.value;
+        renderQuestions();
+      });
+
+      // Chapter pills delegation
+      document.getElementById('chapterPills').addEventListener('click', (e) => {
+        const btn = e.target.closest('.ch-pill');
+        if (!btn) return;
+        state.activeChapter = btn.dataset.ch;
+        renderChapterPills();
+        renderQuestions();
+      });
+
+      // Questions delegation
+      document.getElementById('questionsContainer').addEventListener('click', (e) => {
+        const btn = e.target.closest('.ans-btn');
+        if (!btn) return;
+        const key = btn.dataset.key;
+        const rawVal = btn.dataset.val;
+        const val = rawVal === 'NA' ? 'NA' : Number(rawVal);
+
+        if (state.answers[key] === val) {
+          delete state.answers[key];
+        } else {
+          state.answers[key] = val;
+        }
+        renderChapterPills();
+        renderQuestions();
+        updateHeaderAndStats();
+      });
+
+      document.getElementById('questionsContainer').addEventListener('input', (e) => {
+        const inp = e.target.closest('.note-input');
+        if (!inp) return;
+        state.notes[inp.dataset.notekey] = inp.value;
+        safeSetStorage(STORAGE_KEY_EVAL, state);
+      });
+
+      // Action buttons
+      document.getElementById('saveHistoryBtn').addEventListener('click', saveToHistory);
+      document.getElementById('topSaveSendBtn').addEventListener('click', saveToHistory);
+      document.getElementById('goDashboardBtn').addEventListener('click', () => switchTab('dashboard'));
+      document.getElementById('printReportBtn').addEventListener('click', prepareAndPrint);
+      document.getElementById('printReportBtn2').addEventListener('click', prepareAndPrint);
+      document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+      document.getElementById('exportCsvBtn2').addEventListener('click', exportCSV);
+
+      document.getElementById('resetFormBtn').addEventListener('click', () => {
+        openConfirm('پاک‌سازی فرم فعلی', 'آیا مطمئن هستید که می‌خواهید تمام امتیازها و یادداشت‌های فرم فعلی را پاک کنید؟', () => {
+          state.answers = {};
+          state.notes = {};
+          state.correctiveActions = '';
+          document.getElementById('correctiveActions').value = '';
+          renderChapterPills();
+          renderQuestions();
+          updateHeaderAndStats();
+          showToast('فرم پاک‌سازی شد.', 'info');
+        });
+      });
+
+      // Confirm modal
+      document.getElementById('confirmCancelBtn').addEventListener('click', closeConfirm);
+      document.getElementById('confirmOkBtn').addEventListener('click', () => {
+        if (confirmCallback) confirmCallback();
+        closeConfirm();
+      });
+
+      // History actions
+      document.getElementById('historyList').addEventListener('click', (e) => {
+        const loadBtn = e.target.closest('.load-hist-btn');
+        if (loadBtn) {
+          const rec = historyList.find(h => String(h.id) === loadBtn.dataset.loadid);
+          if (rec) {
+            state.meta = { ...rec.meta };
+            state.answers = { ...rec.answers };
+            state.notes = { ...rec.notes };
+            state.correctiveActions = rec.correctiveActions || '';
+            document.getElementById('evalDate').value = state.meta.date || '';
+            refreshAllSearchableLabels();
+            document.getElementById('correctiveActions').value = state.correctiveActions;
+            renderChapterPills();
+            renderQuestions();
+            updateHeaderAndStats();
+            switchTab('form');
+            showToast('ارزیابی از سوابق بارگذاری شد.', 'success');
+          }
+          return;
+        }
+        const delBtn = e.target.closest('.del-hist-btn');
+        if (delBtn) {
+          openConfirm('حذف سابقه', 'این رکورد از تاریخچه حذف شود؟', () => {
+            historyList = historyList.filter(h => String(h.id) !== delBtn.dataset.delid);
+            safeSetStorage(STORAGE_KEY_HISTORY, historyList);
+            renderHistory();
+            showToast('رکورد حذف شد.', 'info');
+          });
+        }
+      });
+
+      // JSON backup/restore
+      document.getElementById('exportJsonBtn').addEventListener('click', () => {
+        const payload = { state, historyList, config };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `icu_eval_backup_${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('فایل پشتیبان JSON دانلود شد.', 'success');
+      });
+
+      document.getElementById('importJsonInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(reader.result);
+            if (parsed.state) state = { ...state, ...parsed.state };
+            if (Array.isArray(parsed.historyList)) historyList = parsed.historyList;
+            if (parsed.config) config = { ...DEFAULT_CONFIG, ...parsed.config };
+            safeSetStorage(STORAGE_KEY_EVAL, state);
+            safeSetStorage(STORAGE_KEY_HISTORY, historyList);
+            safeSetStorage(STORAGE_KEY_CONFIG, config);
+            applyConfig();
+            renderChapterPills();
+            renderQuestions();
+            updateHeaderAndStats();
+            renderHistory();
+            showToast('پشتیبان با موفقیت بازیابی شد.', 'success');
+          } catch (err) {
+            showToast('فایل JSON معتبر نیست.', 'error');
+          }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+      });
+
+      // Theme customizer
+      const bindCfg = (id, key) => {
+        document.getElementById(id).addEventListener('input', (e) => {
+          config[key] = e.target.value;
+          safeSetStorage(STORAGE_KEY_CONFIG, config);
+          applyConfig();
+        });
+      };
+      bindCfg('cfgHospitalName', 'hospitalName');
+      bindCfg('cfgFormTitle', 'formTitle');
+      bindCfg('cfgDocCode', 'docCode');
+      bindCfg('cfgEditionInfo', 'editionInfo');
+
+      document.querySelectorAll('.color-swatch').forEach(sw => {
+        sw.addEventListener('click', () => {
+          config.primaryColor = sw.dataset.color;
+          safeSetStorage(STORAGE_KEY_CONFIG, config);
+          applyConfig();
+          showToast('رنگ قالب تغییر یافت.', 'success');
+        });
+      });
+
+      document.getElementById('cfgCustomColor').addEventListener('input', (e) => {
+        config.primaryColor = e.target.value;
+        safeSetStorage(STORAGE_KEY_CONFIG, config);
+        applyConfig();
+      });
+
+      document.querySelectorAll('.font-size-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          config.fontSize = btn.dataset.fontsize;
+          safeSetStorage(STORAGE_KEY_CONFIG, config);
+          applyConfig();
+        });
+      });
+
+      document.getElementById('toggleDarkModeBtn').addEventListener('click', () => {
+        config.darkMode = !config.darkMode;
+        safeSetStorage(STORAGE_KEY_CONFIG, config);
+        applyConfig();
+      });
+
+      document.getElementById('cfgLogoInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          config.logoDataUrl = reader.result;
+          safeSetStorage(STORAGE_KEY_CONFIG, config);
+          applyConfig();
+          showToast('لوگو بارگذاری شد.', 'success');
+        };
+        reader.readAsDataURL(file);
+      });
+
+      document.getElementById('removeLogoBtn').addEventListener('click', () => {
+        config.logoDataUrl = '';
+        safeSetStorage(STORAGE_KEY_CONFIG, config);
+        applyConfig();
+        showToast('لوگو حذف شد.', 'info');
+      });
+
+      document.getElementById('resetThemeBtn').addEventListener('click', () => {
+        config = { ...DEFAULT_CONFIG };
+        safeSetStorage(STORAGE_KEY_CONFIG, config);
+        applyConfig();
+        showToast('تنظیمات ظاهر به حالت پیش‌فرض برگشت.', 'info');
+      });
+    }
+
+    function init() {
+      const savedEval = safeGetStorage(STORAGE_KEY_EVAL, null);
+      if (savedEval) state = { ...state, ...savedEval };
+      const savedHist = safeGetStorage(STORAGE_KEY_HISTORY, []);
+      if (Array.isArray(savedHist)) historyList = savedHist;
+      const savedCfg = safeGetStorage(STORAGE_KEY_CONFIG, null);
+      if (savedCfg) config = { ...DEFAULT_CONFIG, ...savedCfg };
+
+      applyConfig();
+      bindEvents();
+      renderChapterPills();
+      renderQuestions();
+      updateHeaderAndStats();
+      switchTab(state.activeTab || 'form');
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
