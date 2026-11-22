@@ -73,6 +73,27 @@
 </head>
 <body class="min-h-screen pb-20">
 
+  <!-- Full-Screen App Access Gate -->
+  <div id="appLockOverlay" class="fixed inset-0 z-[60] flex items-center justify-center p-4 no-print" style="background: linear-gradient(135deg, #0f766e 0%, #115e59 55%, #0f172a 100%);">
+    <div class="card-surface border rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center space-y-4">
+      <div class="w-24 h-20 mx-auto rounded-2xl flex items-center justify-center border shadow-sm bg-white p-1.5 overflow-hidden" style="border-color: var(--primary);">
+        <img id="lockLogoImg" src="" alt="آرم بیمارستان" class="max-w-full max-h-full object-contain hidden" />
+        <svg id="lockDefaultIcon" class="w-9 h-9" style="color: var(--primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+      </div>
+      <div>
+        <h2 class="text-base sm:text-lg font-extrabold">سامانه ارزیابی بخش‌ها</h2>
+        <p class="text-xs text-muted mt-1">برای ورود به محیط برنامه، کد دسترسی را وارد کنید</p>
+      </div>
+      <div class="space-y-2.5">
+        <input id="appLockInput" type="password" inputmode="numeric" autocomplete="off" placeholder="کد ورود به برنامه..." class="w-full px-4 py-3 rounded-xl border bg-transparent text-center tracking-widest font-bold focus:outline-none focus:ring-2" />
+        <div id="appLockError" class="text-xs text-rose-600 font-semibold hidden">کد ورود نادرست است.</div>
+        <button id="appLockSubmitBtn" type="button" class="btn-primary w-full py-3 rounded-xl text-sm font-bold shadow-md transition">ورود به سامانه</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Container -->
   <div id="toastContainer" class="fixed bottom-4 left-4 right-4 md:right-auto md:w-96 z-50 flex flex-col gap-2 pointer-events-none no-print"></div>
 
@@ -139,6 +160,7 @@
         <div class="flex items-center gap-2 shrink-0">
           <button id="topSaveSendBtn" type="button" class="btn-primary px-3 py-2 rounded-xl text-xs font-bold shadow-sm hover:opacity-90 transition">📤 ذخیره و ارسال</button>
           <button id="adminToggleBtn" type="button" class="px-3 py-2 rounded-xl border text-xs font-bold hover:opacity-80 transition">🔐 ورود مدیر</button>
+          <button id="lockAppBtn" type="button" class="px-2.5 py-2 rounded-xl border text-xs font-bold hover:opacity-80 transition" title="قفل کردن برنامه">🔒</button>
           <div class="text-left bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
             <div class="text-[11px] text-muted leading-tight">امتیاز کل</div>
             <div class="flex items-baseline gap-1.5">
@@ -474,8 +496,8 @@
               <input id="cfgAdminPin" type="text" class="w-24 px-2.5 py-1.5 rounded-xl border bg-transparent text-xs text-center" placeholder="3312" />
             </div>
             <div class="flex items-center gap-2">
-              <label class="text-xs font-semibold text-muted">شماره موبایل مدیر (برای پیامک):</label>
-              <input id="cfgManagerPhone" type="tel" dir="ltr" class="w-36 px-2.5 py-1.5 rounded-xl border bg-transparent text-xs text-center" placeholder="0912..." />
+              <label class="text-xs font-semibold text-muted">کد ورود سوپروایزرها به برنامه:</label>
+              <input id="cfgAppPin" type="text" class="w-24 px-2.5 py-1.5 rounded-xl border bg-transparent text-xs text-center" placeholder="1405" />
             </div>
           </div>
           <button id="saveListsBtn" type="button" class="btn-primary px-4 py-2 rounded-xl text-sm font-semibold">💾 ذخیره تنظیمات مدیر</button>
@@ -549,7 +571,7 @@
 
     const STORAGE_KEY_EVAL = 'icu_eval_current_v1';
     const STORAGE_KEY_HISTORY = 'icu_eval_history_v1';
-    const STORAGE_KEY_CONFIG = 'icu_eval_config_v2';
+    const STORAGE_KEY_CONFIG = 'icu_eval_config_v4';
 
     const DEFAULT_CONFIG = {
       hospitalName: 'بیمارستان تخصصی و فوق تخصصی خانواده نزاجا',
@@ -559,9 +581,11 @@
       primaryColor: '#0f766e',
       fontSize: '15px',
       darkMode: false,
-      logoDataUrl: '',
-      adminPin: '3312',
-      managerPhone: '',
+      logoDataUrl: 'data:image/jpeg;base64,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',
+      adminPinHash: '2ee62f16ca41fe7879853975d5fcb4cb858f6edb5fd0355cfb7948d997e6b6a9',
+      appPinHash: 'ae600959378c54c51d1b867e77cef34eba55658bf2abcec187cfe901526d0a80',
+      adminPin: '',
+      appPin: '',
       lists: {"wards": ["ICU I", "ICU II", "NICU", "اورژانس", "دیالیز", "جراحی زنان", "جراحی مردان", "داخلی زنان", "داخلی مردان", "بلوک زایمان", "اتاق عمل", "CSR"], "supervisors": ["حمیده ارتقایی", "ابراهیم منصوری", "خدیجه سلطانی", "مصطفی دهگلی", "موسی قربانی", "نجمه میر", "کاظم نقی لو", "رضا اسلامی", "اعظم محمدپور", "فاطمه رنجبر"], "headNurses": ["جلیل نوروزی", "سارا لشگری", "معصومه جوادی", "زهرا راشکی", "سمانه ولی عابدی", "بهناز جوادی", "سعید منصوری", "فاطمه ظاهری", "علیرضا برجی", "الهه ربیعی", "جواد یعقوبی", "نگین حقایق"], "shifts": ["صبح", "عصر", "شب"]}
     };
 
@@ -619,6 +643,41 @@
       return String(str)
         .replace(/[۰-۹]/g, d => String(fa.indexOf(d)))
         .replace(/[٠-٩]/g, d => String(ar.indexOf(d)));
+    }
+
+    async function sha256Hex(text) {
+      try {
+        if (window.crypto && window.crypto.subtle) {
+          const data = new TextEncoder().encode(text);
+          const buf = await window.crypto.subtle.digest('SHA-256', data);
+          return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    async function verifyPin(rawInput, expectedHash, fallbackPlain) {
+      const clean = toEnglishDigits(String(rawInput || '').trim());
+      if (!clean) return false;
+      const hashed = await sha256Hex(clean);
+      if (hashed && expectedHash) {
+        return hashed === expectedHash;
+      }
+      return fallbackPlain ? clean === toEnglishDigits(fallbackPlain) : false;
+    }
+
+    function setAppUnlocked(unlocked) {
+      const ov = document.getElementById('appLockOverlay');
+      if (!ov) return;
+      if (unlocked) {
+        ov.classList.add('hidden');
+        try { sessionStorage.setItem('arziyabi_unlocked_v1', '1'); } catch (e) {}
+      } else {
+        document.getElementById('appLockInput').value = '';
+        document.getElementById('appLockError').classList.add('hidden');
+        ov.classList.remove('hidden');
+        try { sessionStorage.removeItem('arziyabi_unlocked_v1'); } catch (e) {}
+      }
     }
 
     function showToast(msg, type = 'info') {
@@ -744,17 +803,28 @@
       const prtImg = document.getElementById('printLogoImg');
       const remBtn = document.getElementById('removeLogoBtn');
 
+      const lockImg = document.getElementById('lockLogoImg');
+      const lockIcon = document.getElementById('lockDefaultIcon');
       if (config.logoDataUrl) {
         hdrImg.src = config.logoDataUrl;
         hdrImg.classList.remove('hidden');
         hdrIcon.classList.add('hidden');
         prtImg.src = config.logoDataUrl;
         prtImg.classList.remove('hidden');
+        if (lockImg && lockIcon) {
+          lockImg.src = config.logoDataUrl;
+          lockImg.classList.remove('hidden');
+          lockIcon.classList.add('hidden');
+        }
         remBtn.classList.remove('hidden');
       } else {
         hdrImg.classList.add('hidden');
         hdrIcon.classList.remove('hidden');
         prtImg.classList.add('hidden');
+        if (lockImg && lockIcon) {
+          lockImg.classList.add('hidden');
+          lockIcon.classList.remove('hidden');
+        }
         remBtn.classList.add('hidden');
       }
 
@@ -774,8 +844,8 @@
       document.getElementById('cfgListSupervisors').value = (lists.supervisors || []).join('\n');
       document.getElementById('cfgListHeadNurses').value = (lists.headNurses || []).join('\n');
       document.getElementById('cfgListShifts').value = (lists.shifts || []).join('\n');
-      document.getElementById('cfgAdminPin').value = config.adminPin || '3312';
-      document.getElementById('cfgManagerPhone').value = config.managerPhone || '';
+      document.getElementById('cfgAdminPin').value = '';
+      document.getElementById('cfgAppPin').value = '';
       refreshAllSearchableLabels();
       updateAdminUI();
     }
@@ -1315,12 +1385,25 @@
           headNurses: parseLines('cfgListHeadNurses'),
           shifts: parseLines('cfgListShifts')
         };
-        const newPin = document.getElementById('cfgAdminPin').value.trim();
-        if (newPin) config.adminPin = newPin;
-        config.managerPhone = document.getElementById('cfgManagerPhone').value.trim();
-        safeSetStorage(STORAGE_KEY_CONFIG, config);
-        refreshAllSearchableLabels();
-        showToast('تنظیمات و لیست‌های مدیر ذخیره شدند.', 'success');
+        const newAdminPin = toEnglishDigits(document.getElementById('cfgAdminPin').value.trim());
+        const newAppPin = toEnglishDigits(document.getElementById('cfgAppPin').value.trim());
+        (async () => {
+          if (newAdminPin) {
+            const h = await sha256Hex(newAdminPin);
+            if (h) config.adminPinHash = h;
+            config.adminPin = newAdminPin;
+            document.getElementById('cfgAdminPin').value = '';
+          }
+          if (newAppPin) {
+            const h2 = await sha256Hex(newAppPin);
+            if (h2) config.appPinHash = h2;
+            config.appPin = newAppPin;
+            document.getElementById('cfgAppPin').value = '';
+          }
+          safeSetStorage(STORAGE_KEY_CONFIG, config);
+          refreshAllSearchableLabels();
+          showToast('تنظیمات و رمزها با موفقیت ذخیره شدند.', 'success');
+        })();
       });
 
       // Admin Login modal handlers
@@ -1345,10 +1428,10 @@
         m.classList.remove('flex');
       });
 
-      const submitAdminLogin = () => {
-        const entered = toEnglishDigits(document.getElementById('adminPinInput').value.trim());
-        const expected = toEnglishDigits((config.adminPin || '3312').trim());
-        if (entered === expected) {
+      const submitAdminLogin = async () => {
+        const entered = document.getElementById('adminPinInput').value.trim();
+        const ok = await verifyPin(entered, config.adminPinHash || DEFAULT_CONFIG.adminPinHash, config.adminPin || '3312');
+        if (ok) {
           isAdmin = true;
           const m = document.getElementById('adminModal');
           m.classList.add('hidden');
@@ -1359,6 +1442,30 @@
           document.getElementById('adminPinError').classList.remove('hidden');
         }
       };
+
+      const submitAppUnlock = async () => {
+        const entered = document.getElementById('appLockInput').value.trim();
+        const okApp = await verifyPin(entered, config.appPinHash || DEFAULT_CONFIG.appPinHash, config.appPin || '1405');
+        const okAdm = await verifyPin(entered, config.adminPinHash || DEFAULT_CONFIG.adminPinHash, config.adminPin || '3312');
+        if (okApp || okAdm) {
+          setAppUnlocked(true);
+          if (okAdm) {
+            isAdmin = true;
+            updateAdminUI();
+          }
+        } else {
+          document.getElementById('appLockError').classList.remove('hidden');
+        }
+      };
+      document.getElementById('appLockSubmitBtn').addEventListener('click', submitAppUnlock);
+      document.getElementById('appLockInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') submitAppUnlock();
+      });
+      document.getElementById('lockAppBtn').addEventListener('click', () => {
+        isAdmin = false;
+        updateAdminUI();
+        setAppUnlocked(false);
+      });
       document.getElementById('adminSubmitBtn').addEventListener('click', submitAdminLogin);
       document.getElementById('adminPinInput').addEventListener('keydown', (e) => {
         if (e.key === 'Enter') submitAdminLogin();
@@ -1657,6 +1764,11 @@
       renderQuestions();
       updateHeaderAndStats();
       switchTab(state.activeTab || 'form');
+      try {
+        if (sessionStorage.getItem('arziyabi_unlocked_v1') === '1') {
+          setAppUnlocked(true);
+        }
+      } catch (e) {}
     }
 
     window.addEventListener('DOMContentLoaded', init);

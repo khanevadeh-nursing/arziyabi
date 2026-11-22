@@ -1,4 +1,4 @@
-const CACHE_NAME = 'arziyabi-bakhshha-v1';
+const CACHE_NAME = 'arziyabi-bakhshha-v2';
 const CORE_ASSETS = [
   './',
   './index.html',
