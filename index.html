@@ -153,7 +153,7 @@
   </div>
 
   <!-- Top Sticky Header -->
-  <header class="sticky top-0 z-30 shadow-sm border-b card-surface no-print">
+  <header class="shadow-sm border-b card-surface no-print">
     <div class="max-w-6xl mx-auto px-3 sm:px-6 py-3">
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-3 min-w-0">
@@ -170,6 +170,7 @@
         </div>
 
         <div class="flex items-center gap-2 shrink-0">
+          <button id="pwaInstallBtn" type="button" class="hidden px-3 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold shadow-sm hover:bg-amber-600 transition">📲 نصب برنامه</button>
           <button id="topSaveSendBtn" type="button" class="btn-primary px-3 py-2 rounded-xl text-xs font-bold shadow-sm hover:opacity-90 transition">📤 ذخیره و ارسال</button>
           <button id="adminToggleBtn" type="button" class="px-3 py-2 rounded-xl border text-xs font-bold hover:opacity-80 transition">🔐 ورود مدیر</button>
           <button id="lockAppBtn" type="button" class="px-2.5 py-2 rounded-xl border text-xs font-bold hover:opacity-80 transition" title="قفل کردن برنامه">🔒</button>
@@ -1287,24 +1288,28 @@
     async function shareRecordToManager(record) {
       const payload = { state: { meta: record.meta, answers: record.answers, notes: record.notes, correctiveActions: record.correctiveActions }, historyList: [record], config };
       const baseName = `arziyabi_${record.meta.ward || 'ward'}_${record.meta.date || 'new'}`;
-      const jsonFile = new File([JSON.stringify(payload, null, 2)], `${baseName}.json`, { type: 'application/json' });
-      const csvFile = new File([buildCsvContentForRecord(record)], `${baseName}.csv`, { type: 'text/csv;charset=utf-8;' });
+      const csvFile = new File([buildCsvContentForRecord(record)], `${baseName}.csv`, { type: 'text/csv' });
+      const jsonFile = new File([JSON.stringify(payload, null, 2)], `${baseName}.json`, { type: 'text/plain' });
       const phoneNote = config.managerPhone ? ` | شماره مدیر: ${config.managerPhone}` : '';
       const shareText = `ارزیابی بخش ${record.meta.ward || ''} (${record.meta.date || ''}) - امتیاز: ${record.summary.totalPct}%${phoneNote}`;
       try {
-        if (navigator.share && navigator.canShare) {
-          if (navigator.canShare({ files: [jsonFile, csvFile] })) {
-            await navigator.share({ title: `ارزیابی بخش ${record.meta.ward || ''}`, text: shareText, files: [jsonFile, csvFile] });
-            showToast('فایل‌های ارزیابی و اکسل آماده ارسال شدند.', 'success');
+        if (navigator.share) {
+          if (navigator.canShare && navigator.canShare({ files: [csvFile, jsonFile] })) {
+            await navigator.share({ title: `ارزیابی بخش ${record.meta.ward || ''}`, text: shareText, files: [csvFile, jsonFile] });
+            showToast('فایل‌های اکسل و ارزیابی ارسال شدند.', 'success');
             return;
           }
-          if (navigator.canShare({ files: [csvFile] })) {
+          if (navigator.canShare && navigator.canShare({ files: [csvFile] })) {
             await navigator.share({ title: `ارزیابی بخش ${record.meta.ward || ''}`, text: shareText, files: [csvFile] });
-            showToast('فایل اکسل آماده ارسال شد.', 'success');
+            showToast('فایل اکسل ارسال شد.', 'success');
             return;
           }
+          await navigator.share({ title: `ارزیابی بخش ${record.meta.ward || ''}`, text: shareText });
+          return;
         }
-      } catch (e) {}
+      } catch (e) {
+        if (e && e.name === 'AbortError') return;
+      }
       downloadRecordJson(record);
       exportCSV();
       showToast('فایل‌های JSON و اکسل (CSV) دانلود شدند؛ در پیام‌رسان برای مدیر بفرستید.', 'info');
@@ -1711,13 +1716,20 @@
         showToast('شماره مدیر کپی شد.', 'success');
       });
 
+      const scrollToQuestionsStart = () => {
+        const qBox = document.getElementById('questionsContainer');
+        if (qBox) {
+          qBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      };
+
       document.getElementById('prevChapterBtn').addEventListener('click', () => {
         const cur = Number(state.activeChapter) || 0;
         if (cur > 0) {
           state.activeChapter = cur - 1;
           renderChapterPills();
           renderQuestions();
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          scrollToQuestionsStart();
         }
       });
 
@@ -1728,9 +1740,30 @@
           state.activeChapter = cur + 1;
           renderChapterPills();
           renderQuestions();
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          scrollToQuestionsStart();
         }
       });
+
+      // Android PWA Install Prompt handler
+      let deferredInstallPrompt = null;
+      const installBtn = document.getElementById('pwaInstallBtn');
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        if (installBtn) installBtn.classList.remove('hidden');
+      });
+      if (installBtn) {
+        installBtn.addEventListener('click', async () => {
+          if (!deferredInstallPrompt) return;
+          deferredInstallPrompt.prompt();
+          const res = await deferredInstallPrompt.userChoice;
+          if (res && res.outcome === 'accepted') {
+            installBtn.classList.add('hidden');
+            showToast('اپلیکیشن با موفقیت نصب شد.', 'success');
+          }
+          deferredInstallPrompt = null;
+        });
+      }
 
       document.getElementById('resetFormBtn').addEventListener('click', () => {
         openConfirm('پاک‌سازی فرم فعلی', 'آیا مطمئن هستید که می‌خواهید تمام امتیازها و یادداشت‌های فرم فعلی را پاک کنید؟', () => {
