@@ -275,8 +275,16 @@
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-muted mb-1">تاریخ ارزیابی (دستی)</label>
-            <input id="evalDate" type="text" placeholder="مثلاً 1405/09/01" class="w-full px-3 py-2 rounded-xl border bg-transparent text-sm focus:outline-none focus:ring-2" />
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-medium text-muted">تاریخ ارزیابی (شمسی خودکار)</label>
+              <button type="button" id="setTodayDateBtn" class="text-[11px] font-bold px-2 py-0.5 rounded-lg border hover:opacity-80" style="color: var(--primary);">امروز</button>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5">
+              <select id="evalDay" class="px-2 py-2 rounded-xl border card-surface text-xs sm:text-sm text-center focus:outline-none"></select>
+              <select id="evalMonth" class="px-1.5 py-2 rounded-xl border card-surface text-xs sm:text-sm text-center focus:outline-none"></select>
+              <select id="evalYear" class="px-1.5 py-2 rounded-xl border card-surface text-xs sm:text-sm text-center focus:outline-none"></select>
+            </div>
+            <input id="evalDate" type="hidden" />
           </div>
         </div>
       </div>
@@ -398,7 +406,7 @@
           <button id="exportJsonBtn" type="button" class="px-4 py-2 rounded-xl border text-sm font-semibold hover:opacity-80">💾 دانلود پشتیبان (JSON)</button>
           <label class="px-4 py-2 rounded-xl border text-sm font-semibold hover:opacity-80 cursor-pointer">
             📂 بازیابی فایل JSON
-            <input id="importJsonInput" type="file" accept=".json" class="hidden" />
+            <input id="importJsonInput" type="file" accept=".json,.txt" class="hidden" />
           </label>
         </div>
       </div>
@@ -1285,34 +1293,48 @@
       return '\uFEFF' + lines.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
     }
 
+    function safeFileSlug(str) {
+      return String(str || 'eval').replace(/[\\/:*?"<>|\s]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'eval';
+    }
+
     async function shareRecordToManager(record) {
       const payload = { state: { meta: record.meta, answers: record.answers, notes: record.notes, correctiveActions: record.correctiveActions }, historyList: [record], config };
-      const baseName = `arziyabi_${record.meta.ward || 'ward'}_${record.meta.date || 'new'}`;
+      const safeDate = safeFileSlug(toEnglishDigits(record.meta.date || 'new'));
+      const safeWard = safeFileSlug(record.meta.ward || 'ward');
+      const baseName = `arziyabi_${safeWard}_${safeDate}`;
       const csvFile = new File([buildCsvContentForRecord(record)], `${baseName}.csv`, { type: 'text/csv' });
-      const jsonFile = new File([JSON.stringify(payload, null, 2)], `${baseName}.json`, { type: 'text/plain' });
+      const backupFile = new File([JSON.stringify(payload, null, 2)], `${baseName}_backup.txt`, { type: 'text/plain' });
       const phoneNote = config.managerPhone ? ` | شماره مدیر: ${config.managerPhone}` : '';
       const shareText = `ارزیابی بخش ${record.meta.ward || ''} (${record.meta.date || ''}) - امتیاز: ${record.summary.totalPct}%${phoneNote}`;
-      try {
-        if (navigator.share) {
-          if (navigator.canShare && navigator.canShare({ files: [csvFile, jsonFile] })) {
-            await navigator.share({ title: `ارزیابی بخش ${record.meta.ward || ''}`, text: shareText, files: [csvFile, jsonFile] });
-            showToast('فایل‌های اکسل و ارزیابی ارسال شدند.', 'success');
+      if (navigator.share) {
+        try {
+          if (navigator.canShare && navigator.canShare({ files: [csvFile, backupFile] })) {
+            await navigator.share({ title: `ارزیابی بخش ${record.meta.ward || ''}`, text: shareText, files: [csvFile, backupFile] });
+            showToast('فایل اکسل و پشتیبان آماده ارسال شدند.', 'success');
             return;
           }
+        } catch (e) {
+          if (e && e.name === 'AbortError') return;
+        }
+        try {
           if (navigator.canShare && navigator.canShare({ files: [csvFile] })) {
             await navigator.share({ title: `ارزیابی بخش ${record.meta.ward || ''}`, text: shareText, files: [csvFile] });
-            showToast('فایل اکسل ارسال شد.', 'success');
+            showToast('فایل اکسل آماده ارسال شد.', 'success');
             return;
           }
+        } catch (e) {
+          if (e && e.name === 'AbortError') return;
+        }
+        try {
           await navigator.share({ title: `ارزیابی بخش ${record.meta.ward || ''}`, text: shareText });
           return;
+        } catch (e) {
+          if (e && e.name === 'AbortError') return;
         }
-      } catch (e) {
-        if (e && e.name === 'AbortError') return;
       }
       downloadRecordJson(record);
       exportCSV();
-      showToast('فایل‌های JSON و اکسل (CSV) دانلود شدند؛ در پیام‌رسان برای مدیر بفرستید.', 'info');
+      showToast('این مرورگر اشتراک‌گذاری مستقیم ندارد؛ فایل‌ها دانلود شدند.', 'info');
     }
 
     function saveToHistory() {
@@ -1453,12 +1475,67 @@
         btn.addEventListener('click', () => switchTab(btn.dataset.tab));
       });
 
-      // Manual Date input
-      const dateEl = document.getElementById('evalDate');
-      dateEl.value = state.meta.date || '';
-      dateEl.addEventListener('input', () => {
-        state.meta.date = dateEl.value;
+      // Automatic Jalali Date Picker
+      const persianMonths = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+      const daySel = document.getElementById('evalDay');
+      const monthSel = document.getElementById('evalMonth');
+      const yearSel = document.getElementById('evalYear');
+      const dateHiddenEl = document.getElementById('evalDate');
+
+      const getTodayJalaliParts = () => {
+        try {
+          const fmt = new Intl.DateTimeFormat('en-US-u-ca-persian', { year: 'numeric', month: '2-digit', day: '2-digit' });
+          const parts = fmt.formatToParts(new Date());
+          const y = Number(parts.find(x => x.type === 'year').value);
+          const m = Number(parts.find(x => x.type === 'month').value);
+          const d = Number(parts.find(x => x.type === 'day').value);
+          if (y > 1300 && m >= 1 && m <= 12 && d >= 1 && d <= 31) return { y, m, d };
+        } catch (e) {}
+        return { y: 1405, m: 9, d: 2 };
+      };
+
+      daySel.innerHTML = Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}">${toPersianDigits(i + 1)}</option>`).join('');
+      monthSel.innerHTML = persianMonths.map((name, i) => `<option value="${i + 1}">${name}</option>`).join('');
+      yearSel.innerHTML = [1403, 1404, 1405, 1406, 1407, 1408].map(y => `<option value="${y}">${toPersianDigits(y)}</option>`).join('');
+
+      const syncDateToState = () => {
+        const y = yearSel.value;
+        const m = String(monthSel.value).padStart(2, '0');
+        const d = String(daySel.value).padStart(2, '0');
+        const formatted = `${y}/${m}/${d}`;
+        state.meta.date = formatted;
+        dateHiddenEl.value = formatted;
         safeSetStorage(STORAGE_KEY_EVAL, state);
+      };
+
+      const applyDatePartsToSelects = (dateStr) => {
+        const clean = toEnglishDigits(String(dateStr || '')).trim();
+        const match = clean.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+        if (match) {
+          yearSel.value = match[1];
+          monthSel.value = String(Number(match[2]));
+          daySel.value = String(Number(match[3]));
+          dateHiddenEl.value = clean;
+        } else {
+          const t = getTodayJalaliParts();
+          yearSel.value = String(t.y);
+          monthSel.value = String(t.m);
+          daySel.value = String(t.d);
+          syncDateToState();
+        }
+      };
+
+      window.__applyJalaliDate = applyDatePartsToSelects;
+      applyDatePartsToSelects(state.meta.date);
+
+      [daySel, monthSel, yearSel].forEach(sel => sel.addEventListener('change', syncDateToState));
+      document.getElementById('setTodayDateBtn').addEventListener('click', () => {
+        const t = getTodayJalaliParts();
+        yearSel.value = String(t.y);
+        monthSel.value = String(t.m);
+        daySel.value = String(t.d);
+        syncDateToState();
+        showToast('تاریخ روی امروز تنظیم شد.', 'info');
       });
 
       // Searchable dropdowns
@@ -1795,7 +1872,7 @@
             state.answers = { ...rec.answers };
             state.notes = { ...rec.notes };
             state.correctiveActions = rec.correctiveActions || '';
-            document.getElementById('evalDate').value = state.meta.date || '';
+            if (window.__applyJalaliDate) window.__applyJalaliDate(state.meta.date);
             refreshAllSearchableLabels();
             document.getElementById('correctiveActions').value = state.correctiveActions;
             renderChapterPills();
